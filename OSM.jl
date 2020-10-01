@@ -45,6 +45,5 @@ extract(s::AbstractString) = open(s) |> extract
 
 include("Nominatim.jl")
 include("Overpass.jl")
-include("Renderer.jl")
 
 end
