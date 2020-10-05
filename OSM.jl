@@ -175,11 +175,11 @@ const e = 1 - Rp^2 / Re^2
 Convert from geodetic coordinates to ECEF.
 """
 function ECEF(φ, λ, h = 0)
-	N(φ) = Re / √(1 - e^2 * sin(φ)^2)
+	N = Re / √(1 - e^2 * sin(φ)^2)
 
-	(N(φ) + h) * cos(φ) * cos(λ),
-	(N(φ) + h) * cos(φ) * sin(λ),
-	((1 - e^2) * N(φ) + h) * sin(φ)
+	(N + h) * cos(φ) * cos(λ),
+	(N + h) * cos(φ) * sin(λ),
+	((1 - e^2) * N + h) * sin(φ)
 end
 
 include("Nominatim.jl")
