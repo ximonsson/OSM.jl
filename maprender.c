@@ -44,36 +44,47 @@ static GLuint tex;
 static GLuint vbo_nodes;
 static GLuint vbo_tex;
 
-static GLuint attr_street, attr_way, attr_highway;
+static GLfloat nodes_[3 * 3] =
+{
+	-.25, -.25, 0.,
+	0, 0, 0,
+	.1, .5, 0
+};
+
+static const GLfloat nodes[] = {
+	-1.0f, -1.0f, 0.0f,
+	1.0f, -1.0f, 0.0f,
+	0.0f,  1.0f, 0.0f,
+};
 
 int init_gl (int w, int h)
 {
 	//if (compile_shaders () != 0)
 	//return 1;
 
-	glClearColor (.1f, .1f, .1f, 1.f);
-	glViewport (0, 0, w, h);
-
-	// gen texture
-	glEnable (GL_TEXTURE_2D);
-	glActiveTexture	(GL_TEXTURE0);
-	glGenTextures (1, &tex);
-	glBindTexture (GL_TEXTURE_2D, tex);
-	glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-
-	// generate vertex buffer for vertices and texture coords
-	glGenBuffers (1, &vbo_nodes);
-	glGenBuffers (1, &vbo_tex);
-
 	GLuint foo;
 	glGenVertexArrays (1, &foo);
 	glBindVertexArray (foo);
 
-	//glBindBuffer (GL_ARRAY_BUFFER, vertex_vbo);
-	//glBufferData (GL_ARRAY_BUFFER, 6 * 3 * sizeof (GLfloat), vertex_coords, GL_STATIC_DRAW);
+	glClearColor (.9f, .1f, .1f, 1.f);
+	glViewport (0, 0, w, h);
+
+	// gen texture
+	//glEnable (GL_TEXTURE_2D);
+	//glActiveTexture	(GL_TEXTURE0);
+	//glGenTextures (1, &tex);
+	//glBindTexture (GL_TEXTURE_2D, tex);
+	//glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	//glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	//glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	//glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+	// generate vertex buffer for vertices and texture coords
+	glGenBuffers (1, &vbo_nodes);
+	//glGenBuffers (1, &vbo_tex);
+
+	glBindBuffer (GL_ARRAY_BUFFER, vbo_nodes);
+	glBufferData (GL_ARRAY_BUFFER, 3 * 3 * sizeof (GLfloat), nodes, GL_STATIC_DRAW);
 	//GLuint vertex_attrib_location = glGetAttribLocation (program, "vertex");
 	glEnableVertexAttribArray (0);
 	glVertexAttribPointer (0, 3, GL_FLOAT, 0, 0, 0);
@@ -101,24 +112,14 @@ void init ()
 	assert (init_gl (W, H) == 0);
 }
 
-static GLfloat street_nodes[3 * 3] =
-{
-	-.25, -.25, 0.,
-	0, 0, 0,
-	.1, .5, 0
-};
-
 void draw ()
 {
 	glClear (GL_COLOR_BUFFER_BIT);
-	glColor3b (255, 255, 255);
+	//glColor3b (255, 255, 255);
 
 	glEnableVertexAttribArray (0);
-
 	glBindBuffer (GL_ARRAY_BUFFER, vbo_nodes);
-	glBufferData (GL_ARRAY_BUFFER, 3 * 3 * sizeof (GLfloat), street_nodes, GL_STATIC_DRAW);
 	glDrawArrays (GL_TRIANGLES, 0, 3);
-
 	glDisableVertexAttribArray (0);
 
 	SDL_GL_SwapWindow (win);
