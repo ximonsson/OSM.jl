@@ -7,6 +7,77 @@
 static SDL_Window* win;
 static SDL_GLContext ctx;
 
+static int compile_shader (const char* filepath, GLuint* shader, GLuint shadertype)
+{
+	size_t result, file_size;
+
+	// open file and get the size of it
+	FILE* fp = fopen (filepath, "rb");
+	if (!fp)
+	{
+		fprintf (stderr, "could not open shader source file\n");
+		return 1;
+	}
+	fseek (fp, 0, SEEK_END);
+	file_size = ftell (fp);
+	rewind (fp);
+
+	// read content of shader
+	uint8_t* src = (uint8_t *) calloc (file_size, 1);
+	if ((result = fread (src, 1, file_size - 1, fp)) != file_size - 1)
+	{
+		fprintf (stderr, "could not read entire shader\n");
+		return 1;
+	}
+	fclose (fp);
+
+	// compile the shader
+	int status;
+	*shader = glCreateShader (shadertype);
+	glShaderSource (*shader, 1, (const char **) &src, 0);
+	glCompileShader (*shader);
+	glGetShaderiv (*shader, GL_COMPILE_STATUS, &status);
+	if (status == GL_FALSE)
+	{
+		GLint log_size = 0;
+		glGetShaderiv (*shader, GL_INFO_LOG_LENGTH, &log_size);
+
+		char error_log[log_size];
+		glGetShaderInfoLog (*shader, log_size, &log_size, error_log);
+
+		fprintf (stderr, "error compiling shader\n%s\n", error_log);
+		return 1;
+	}
+
+	// cleanup
+	free (src);
+	return 0;
+}
+
+static GLuint vertexshader, fragmentshader, program;
+
+static int compile_shaders ()
+{
+	int res;
+
+	res = compile_shader ("vertex.glsl", &vertexshader, GL_VERTEX_SHADER);
+	if (res != 0)
+		return res;
+
+	res = compile_shader ("fragment.glsl", &fragmentshader, GL_FRAGMENT_SHADER);
+	if (res != 0)
+		return res;
+
+	// create the shader program and attach the shaders
+	program = glCreateProgram ();
+	glAttachShader (program, fragmentshader);
+	glAttachShader (program, vertexshader);
+	glLinkProgram  (program);
+	glUseProgram   (program);
+
+	return 0;
+}
+
 int init_win (int w, int h)
 {
 	int ret = SDL_Init (SDL_INIT_VIDEO);
@@ -15,11 +86,12 @@ int init_win (int w, int h)
 
 	SDL_GL_SetAttribute (SDL_GL_DOUBLEBUFFER, 1);
 	SDL_GL_SetAttribute (SDL_GL_DEPTH_SIZE,  24);
-	SDL_GL_SetAttribute (SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
+	SDL_GL_SetAttribute (SDL_GL_CONTEXT_PROFILE_MASK, 1);
 	SDL_GL_SetAttribute (SDL_GL_CONTEXT_MAJOR_VERSION, 2);
 	SDL_GL_SetAttribute (SDL_GL_CONTEXT_MINOR_VERSION, 0);
 
-	win = SDL_CreateWindow (
+	win = SDL_CreateWindow
+	(
 		"map viewer",
 		SDL_WINDOWPOS_UNDEFINED,
 		SDL_WINDOWPOS_UNDEFINED,
@@ -59,8 +131,8 @@ static const GLfloat nodes[] = {
 
 int init_gl (int w, int h)
 {
-	//if (compile_shaders () != 0)
-	//return 1;
+	if (compile_shaders () != 0)
+		return 1;
 
 	GLuint foo;
 	glGenVertexArrays (1, &foo);
