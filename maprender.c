@@ -115,6 +115,8 @@ void destroy_win ()
 static GLuint tex;
 static GLuint vbo_nodes;
 static GLuint vbo_tex;
+static GLuint color;
+static GLuint vx;
 
 static GLfloat nodes_[3 * 3] =
 {
@@ -134,16 +136,12 @@ int init_gl (int w, int h)
 	if (compile_shaders () != 0)
 		return 1;
 
-	GLuint foo;
-	glGenVertexArrays (1, &foo);
-	glBindVertexArray (foo);
-
-	glClearColor (.9f, .1f, .1f, 1.f);
+	glClearColor (.1f, .1f, .1f, 1.f);
 	glViewport (0, 0, w, h);
 
 	// gen texture
 	//glEnable (GL_TEXTURE_2D);
-	//glActiveTexture	(GL_TEXTURE0);
+	//glActiveTexture (GL_TEXTURE0);
 	//glGenTextures (1, &tex);
 	//glBindTexture (GL_TEXTURE_2D, tex);
 	//glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
@@ -153,13 +151,9 @@ int init_gl (int w, int h)
 
 	// generate vertex buffer for vertices and texture coords
 	glGenBuffers (1, &vbo_nodes);
-	//glGenBuffers (1, &vbo_tex);
+	glGenBuffers (1, &vbo_tex);
 
-	glBindBuffer (GL_ARRAY_BUFFER, vbo_nodes);
-	glBufferData (GL_ARRAY_BUFFER, 3 * 3 * sizeof (GLfloat), nodes, GL_STATIC_DRAW);
-	//GLuint vertex_attrib_location = glGetAttribLocation (program, "vertex");
-	glEnableVertexAttribArray (0);
-	glVertexAttribPointer (0, 3, GL_FLOAT, 0, 0, 0);
+	vx = glGetAttribLocation (program, "vertex");
 
 	//glBindBuffer (GL_ARRAY_BUFFER, texture_vbo);
 	//glBufferData (GL_ARRAY_BUFFER, 6 * 2 * sizeof (GLfloat), texture_coords, GL_STATIC_DRAW);
@@ -168,9 +162,7 @@ int init_gl (int w, int h)
 	//glVertexAttribPointer (texture_attrib_location, 2, GL_FLOAT, 0, 0, 0);
 
 	//glUniform1i (glGetUniformLocation (program, "tex"), 0);
-
-	//color_uniform = glGetAttribLocation (program, "color_in");
-	//glVertexAttrib4f (color_uniform, 1.0, 1.0, 1.0, 1.0);
+	color = glGetAttribLocation (program, "color_in");
 
 	return 0;
 }
@@ -184,15 +176,28 @@ void init ()
 	assert (init_gl (W, H) == 0);
 }
 
+void load_nodes (float* nodes)
+{
+
+}
+
 void draw ()
 {
 	glClear (GL_COLOR_BUFFER_BIT);
-	//glColor3b (255, 255, 255);
 
-	glEnableVertexAttribArray (0);
+	glVertexAttrib4f (color, 1.0, 1.0, 1.0, 1.0);
+	glLineWidth (3.);
+
+	glEnableVertexAttribArray (vx);
+
 	glBindBuffer (GL_ARRAY_BUFFER, vbo_nodes);
-	glDrawArrays (GL_TRIANGLES, 0, 3);
-	glDisableVertexAttribArray (0);
+	glBufferData (GL_ARRAY_BUFFER, 3 * 3 * sizeof (GLfloat), nodes_, GL_STATIC_DRAW);
+
+	glVertexAttribPointer (vx, 3, GL_FLOAT, 0, 0, 0);
+
+	glDrawArrays (GL_LINE_STRIP, 0, 3);
+
+	glDisableVertexAttribArray (vx);
 
 	SDL_GL_SwapWindow (win);
 }
