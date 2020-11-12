@@ -118,17 +118,11 @@ static GLuint vbo_tex;
 static GLuint color;
 static GLuint vx;
 
-static GLfloat nodes_[3 * 3] =
+static GLfloat nodes[3 * 3] =
 {
 	-.25, -.25, 0.,
 	0, 0, 0,
 	.1, .5, 0
-};
-
-static const GLfloat nodes[] = {
-	-1.0f, -1.0f, 0.0f,
-	1.0f, -1.0f, 0.0f,
-	0.0f,  1.0f, 0.0f,
 };
 
 int init_gl (int w, int h)
@@ -139,29 +133,11 @@ int init_gl (int w, int h)
 	glClearColor (.1f, .1f, .1f, 1.f);
 	glViewport (0, 0, w, h);
 
-	// gen texture
-	//glEnable (GL_TEXTURE_2D);
-	//glActiveTexture (GL_TEXTURE0);
-	//glGenTextures (1, &tex);
-	//glBindTexture (GL_TEXTURE_2D, tex);
-	//glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	//glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	//glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	//glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-
 	// generate vertex buffer for vertices and texture coords
 	glGenBuffers (1, &vbo_nodes);
 	glGenBuffers (1, &vbo_tex);
 
 	vx = glGetAttribLocation (program, "vertex");
-
-	//glBindBuffer (GL_ARRAY_BUFFER, texture_vbo);
-	//glBufferData (GL_ARRAY_BUFFER, 6 * 2 * sizeof (GLfloat), texture_coords, GL_STATIC_DRAW);
-	//GLuint texture_attrib_location = glGetAttribLocation (program, "texture_coords_in");
-	//glEnableVertexAttribArray (texture_attrib_location);
-	//glVertexAttribPointer (texture_attrib_location, 2, GL_FLOAT, 0, 0, 0);
-
-	//glUniform1i (glGetUniformLocation (program, "tex"), 0);
 	color = glGetAttribLocation (program, "color_in");
 
 	return 0;
@@ -170,18 +146,18 @@ int init_gl (int w, int h)
 #define W 800
 #define H 600
 
-void init ()
+static void init ()
 {
 	assert (init_win (W, H) == 0);
 	assert (init_gl (W, H) == 0);
 }
 
-void load_nodes (float* nodes)
+void load_nodes (float* nodes_, size_t n)
 {
-
+	memcpy(nodes, nodes_, n * sizeof(float));
 }
 
-void draw ()
+static void draw ()
 {
 	glClear (GL_COLOR_BUFFER_BIT);
 
@@ -191,7 +167,7 @@ void draw ()
 	glEnableVertexAttribArray (vx);
 
 	glBindBuffer (GL_ARRAY_BUFFER, vbo_nodes);
-	glBufferData (GL_ARRAY_BUFFER, 3 * 3 * sizeof (GLfloat), nodes_, GL_STATIC_DRAW);
+	glBufferData (GL_ARRAY_BUFFER, 3 * 3 * sizeof (GLfloat), nodes, GL_STATIC_DRAW);
 
 	glVertexAttribPointer (vx, 3, GL_FLOAT, 0, 0, 0);
 
