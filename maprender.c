@@ -118,11 +118,17 @@ static GLuint vbo_tex;
 static GLuint color;
 static GLuint vx;
 
-static GLfloat nodes[3 * 3] =
+static GLfloat nodes[9 * 3] =
 {
 	-.25, -.25, 0.,
 	0, 0, 0,
-	.1, .5, 0
+	.1, .5, 0,
+	-.5, -.5, 0.,
+	1., 0, 0,
+	.1, .5, 0,
+	-.25, .5, 0.,
+	0, -1, 0,
+	-1, .5, 0
 };
 
 int init_gl (int w, int h)
@@ -161,17 +167,27 @@ static void draw ()
 {
 	glClear (GL_COLOR_BUFFER_BIT);
 
-	glVertexAttrib4f (color, 1.0, 1.0, 1.0, 1.0);
-	glLineWidth (3.);
-
 	glEnableVertexAttribArray (vx);
 
 	glBindBuffer (GL_ARRAY_BUFFER, vbo_nodes);
-	glBufferData (GL_ARRAY_BUFFER, 3 * 3 * sizeof (GLfloat), nodes, GL_STATIC_DRAW);
+	glBufferData (GL_ARRAY_BUFFER, 9 * 3 * sizeof (GLfloat), nodes, GL_STATIC_DRAW);
 
 	glVertexAttribPointer (vx, 3, GL_FLOAT, 0, 0, 0);
 
+	// draw passages
+	glVertexAttrib4f (color, 1.0, 1.0, 1.0, 1.0);
+	glLineWidth (1.);
 	glDrawArrays (GL_LINE_STRIP, 0, 3);
+
+	// draw streets
+	glVertexAttrib4f (color, .6, .6, .6, 1.0);
+	glLineWidth (5.);
+	glDrawArrays (GL_LINE_STRIP, 3, 3);
+
+	// draw highways
+	glVertexAttrib4f (color, .2, .2, .2, 1.0);
+	glLineWidth (10.);
+	glDrawArrays (GL_LINE_STRIP, 6, 3);
 
 	glDisableVertexAttribArray (vx);
 
