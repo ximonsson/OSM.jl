@@ -48,13 +48,13 @@ struct Way
 	ID::Int64
 	visible::Bool
 	nodes::Vector{Int64}
-	tags::Dict{Symbol,String}
+	tags::Array{Pair{Symbol,String},1}
 
 	function Way(el::XMLElement)
 		atr = el |> attributes_dict
 		n = get_elements_by_tagname(el, "nd") .|> ((x -> x["ref"]) ∘ attributes_dict)
 		tags = get_elements_by_tagname(el, "tag") .|> Tag
-		new(parse(Int64, atr["id"]), get(atr, "visible", false), n, tags)
+		new(parse(Int64, atr["id"]), get(atr, "visible", false), parse.(Int64, n), tags)
 	end
 end
 
