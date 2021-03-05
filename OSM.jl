@@ -38,10 +38,11 @@ end
 
 From OpenStreetMap wiki https://wiki.openstreetmap.org/wiki/Way
 ```
-A way is an ordered list of nodes which normally also has at least one tag or is included within a Relation.
-A way can have between 2 and 2,000 nodes, although it's possible that faulty ways with zero or a single
-node exist. A way can be open or closed. A closed way is one whose last node on the way is also
-the first on that way. A closed way may be interpreted either as a closed polyline, or an area, or both.
+A way is an ordered list of nodes which normally also has at least one tag or is included
+within a Relation. A way can have between 2 and 2,000 nodes, although it's possible that
+faulty ways with zero or a single node exist. A way can be open or closed. A closed way is
+one whose last node on the way is also the first on that way. A closed way may be interpreted
+either as a closed polyline, or an area, or both.
 ```
 """
 struct Way
@@ -65,8 +66,8 @@ From OpenstreetMap wiki https://wiki.openstreetmap.org/wiki/Relation
 ```
 A relation is a group of elements. To be more exact it is one of the core data elements that
 consists of one or more tags and also an ordered list of one or more nodes, ways and/or relations
-as members which is used to define logical or geographic relationships between other elements
-. A member of a relation can optionally have a role which describes the part that a particular
+as members which is used to define logical or geographic relationships between other elements.
+A member of a relation can optionally have a role which describes the part that a particular
 feature plays within a relation.
 ```
 
@@ -140,7 +141,8 @@ extract(fp::AbstractString) = open(fp) |> extract
 """
 	ENU(X, Y, Z, φ, λ)
 
-Convert between ECEF coordinate system and ENU using original geodetic coordinates as reference.
+Convert between ECEF coordinate system and ENU using original geodetic coordinates as
+reference.
 
 TODO not sure what the X Y Z coordinates should be in this case.
 """
@@ -155,8 +157,8 @@ ENU(X, Y, Z, φ, λ) =
 """
 	ENU(φ, λ, h = 0)
 
-Convert between geodetic coordinates and ENU. This is done by first converting to ECEF and then from ECEF
-to ENU, using the original geodetic as reference.
+Convert between geodetic coordinates and ENU. This is done by first converting to ECEF and
+then from ECEF to ENU, using the original geodetic as reference.
 """
 ENU(φ, λ, h = 0) = ECEF(φ, λ, h) |> (x, y, z) -> ENU(x, y, z, φ, λ)
 
