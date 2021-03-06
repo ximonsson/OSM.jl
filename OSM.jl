@@ -153,10 +153,10 @@ end
 	Data(::XMLDocument)
 """
 function Data(xdoc::XMLDocument)
-	fn(x) = x.ID => x
+	fn(x) = x .|> (x -> x.ID => x) |> Dict
 	Data(
-		nodes(xdoc) .|> fn |> Dict,
-		ways(xdoc) .|> fn |> Dict,
+		xdoc |> nodes |> fn,
+		xdoc |> ways |> fn,
 	)
 end
 
@@ -181,6 +181,8 @@ end
 Extract OSM XML data from file at file path `fp`.
 """
 Data(fp::AbstractString) = fp |> open |> Data
+
+
 
 """
 	ENU(X, Y, Z, φ, λ)
