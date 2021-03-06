@@ -6,7 +6,14 @@ const Tag = Pair{Symbol,String}
 
 function Tag(el::XMLElement)
 	atr = el |> attributes_dict
-	Symbol(atr["k"]) => atr["v"]
+	Symbol(replace(atr["k"], ":" => "_")) => atr["v"]
+end
+
+struct Node
+	ID::Int64
+	lat::Float64
+	lon::Float64
+	tags::Dict{Symbol,String}
 end
 
 """
@@ -15,23 +22,34 @@ end
 Create a Node object from the OSM XML Element.
 For more information about nodes read https://wiki.openstreetmap.org/wiki/Node.
 """
-struct Node
-	ID::Int64
-	lat::Float64
-	lon::Float64
-	tags::Vector{Tag}
-
-	function Node(el::XMLElement)
-		atr = el |> attributes_dict
-		tags = get_elements_by_tagname(el, "tag") .|> Tag
-		new(
-			parse(Int64, atr["id"]),
-			parse(Float64, atr["lat"]),
-			parse(Float64, atr["lon"]),
-			tags,
-		)
-	end
+function Node(el::XMLElement)
+	atr = el |> attributes_dict
+	tags = (get_elements_by_tagname(el, "tag") .|> Tag) |> Dict
+	Node(
+		parse(Int64, atr["id"]),
+		parse(Float64, atr["lat"]),
+		parse(Float64, atr["lon"]),
+		tags,
+	)
 end
+
+"""
+	nodes(el::XMLElement)
+
+Extract all the Nodes from the OSM XML that are children to the given `el` element.
+"""
+function nodes(el::XMLElement)::Vector{Node}
+	@debug "getting nodes within XML"
+	get_elements_by_tagname(el, "node") .|> Node
+end
+
+"""
+	nodes(doc::XMLDocument)
+
+Extract all the Nodes from the OSM XML document.
+This will start from the root of the document and return all Nodes found.
+"""
+nodes(doc::XMLDocument)::Vector{Node} = doc |> root |> nodes
 
 """
 	Way(el::XMLElement)
@@ -48,31 +66,78 @@ struct Way
 	ID::Int64
 	visible::Bool
 	nodes::Vector{Int64}
-	tags::Array{Pair{Symbol,String},1}
+	tags::Dict{Symbol,String}
+end
 
-	function Way(el::XMLElement)
-		atr = el |> attributes_dict
-		n = get_elements_by_tagname(el, "nd") .|> ((x -> x["ref"]) ∘ attributes_dict)
-		tags = get_elements_by_tagname(el, "tag") .|> Tag
-		new(parse(Int64, atr["id"]), get(atr, "visible", false), parse.(Int64, n), tags)
-	end
+function Way(el::XMLElement)
+	atr = el |> attributes_dict
+	n = get_elements_by_tagname(el, "nd") .|> ((x -> x["ref"]) ∘ attributes_dict)
+	tags = (get_elements_by_tagname(el, "tag") .|> Tag) |> Dict
+	Way(parse(Int64, atr["id"]), get(atr, "visible", false), parse.(Int64, n), tags)
+end
+
+"""
+	ways(el::XMLElement)
+
+Return all Way elements under the given XML element.
+"""
+function ways(el::XMLElement)::Vector{Way}
+	@debug "getting ways within XML"
+	get_elements_by_tagname(el, "way") .|> Way
+end
+
+"""
+	ways(::XLMDocument)
+
+Return all Way elements in the given XML document.
+"""
+ways(doc::XMLDocument) = doc |> root |> ways
+
+"""
+	name(::Way)::Union{String,Missing}
+
+Return the name of the Way. If there is no name for the way `missing` is returned.
+"""
+name(w::Way)::Union{String,Missing} = get(w.tags, :name, missing)
+
+"""
+	is_closed(::Way)::Bool
+
+Return wether the way is closed or not.
+"""
+is_closed(w::Way)::Bool = w.nodes[1] == w.nodes[end]
+
+"""
+	is_area(::Way)::Bool
+
+Return wether the way is an area. True if `is_area(w)`.
+"""
+function is_area(w::Way)::Bool
+	is_closed(w)
+end
+
+"""
+	is_road(::Way)::Bool
+"""
+function is_road(w::Way)::Bool
+	!is_area(w)
 end
 
 """
 	Relation(el::XMLElement)
 
 From OpenstreetMap wiki https://wiki.openstreetmap.org/wiki/Relation
+
 ```
 A relation is a group of elements. To be more exact it is one of the core data elements that
 consists of one or more tags and also an ordered list of one or more nodes, ways and/or relations
-as members which is used to define logical or geographic relationships between other elements
-. A member of a relation can optionally have a role which describes the part that a particular
+as members which is used to define logical or geographic relationships between other elements.
+A member of a relation can optionally have a role which describes the part that a particular
 feature plays within a relation.
 ```
-
 """
 struct Relation
-
+	# TODO
 end
 
 """
@@ -80,62 +145,42 @@ Data structure containing data from an OSM XML document.
 Read https://wiki.openstreetmap.org/wiki/OSM_XML for more information.
 """
 struct Data
-	nodes::Vector{Node}
-	ways::Vector{Way}
+	nodes::Dict{Int64,Node}
+	ways::Dict{Int64,Way}
 end
 
 """
-	nodes(el::XMLElement)
-
-Extract all the Nodes from the OSM XML that are children to the given `el` element.
+	Data(::XMLDocument)
 """
-function nodes(el::XMLElement)
-	@debug "getting nodes within XML"
-	get_elements_by_tagname(el, "node") .|> Node
+function Data(xdoc::XMLDocument)
+	fn(x) = x.ID => x
+	Data(
+		nodes(xdoc) .|> fn |> Dict,
+		ways(xdoc) .|> fn |> Dict,
+	)
 end
 
 """
-	nodes(doc::XMLDocument)
-
-Extract all the Nodes from the OSM XML document.
-This will start from the root of the document and return all Nodes found.
-"""
-nodes(doc::XMLDocument) = doc |> root |> nodes
-
-"""
-	ways(el::XMLElement)
-"""
-function ways(el::XMLElement)
-	@debug "getting ways within XML"
-	get_elements_by_tagname(el, "way") .|> Way
-end
-
-ways(doc::XMLDocument) = doc |> root |> ways
-
-"""
-	extract(io::IOStream)
+	Data(::IOStream)
 
 Extract OSM XML data from the bytestrem `io`. This could be a file or maybe the
 body of an HTTP response.
 """
-function extract(io::IOStream)
-	@debug "reading XML data"
+function Data(io::IOStream)
 	xdoc = io |> read |> String |> parse_string
 	try
-		Data(nodes(xdoc), ways(xdoc))
+		Data(xdoc)
 	finally
-		@debug "freeing XML document"
 		xdoc |> free
-		nothing
 	end
 end
 
 """
-	extract(fp::AbstractString)
+	Data(::AbstractString)
 
 Extract OSM XML data from file at file path `fp`.
 """
-extract(fp::AbstractString) = open(fp) |> extract
+Data(fp::AbstractString) = fp |> open |> Data
 
 """
 	ENU(X, Y, Z, φ, λ)
