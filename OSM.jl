@@ -13,7 +13,8 @@ struct Node
 	ID::Int64
 	lat::Float64
 	lon::Float64
-	tags::Dict{Symbol,String}
+	#tags::Dict{Symbol,String}
+	tags::Vector{Tag}
 end
 
 """
@@ -24,7 +25,7 @@ For more information about nodes read https://wiki.openstreetmap.org/wiki/Node.
 """
 function Node(el::XMLElement)
 	atr = el |> attributes_dict
-	tags = (get_elements_by_tagname(el, "tag") .|> Tag) |> Dict
+	tags = (get_elements_by_tagname(el, "tag") .|> Tag) #|> Dict
 	Node(
 		parse(Int64, atr["id"]),
 		parse(Float64, atr["lat"]),
@@ -38,7 +39,7 @@ end
 
 Extract all the Nodes from the OSM XML that are children to the given `el` element.
 """
-function nodes(el::XMLElement)::Vector{Node}
+function nodes(el::XMLElement)
 	@debug "getting nodes within XML"
 	get_elements_by_tagname(el, "node") .|> Node
 end
@@ -49,7 +50,7 @@ end
 Extract all the Nodes from the OSM XML document.
 This will start from the root of the document and return all Nodes found.
 """
-nodes(doc::XMLDocument)::Vector{Node} = doc |> root |> nodes
+nodes(doc::XMLDocument) = doc |> root |> nodes
 
 """
 	Way(el::XMLElement)
@@ -67,13 +68,14 @@ struct Way
 	ID::Int64
 	visible::Bool
 	nodes::Vector{Int64}
-	tags::Dict{Symbol,String}
+	#tags::Dict{Symbol,String}
+	tags::Vector{Tag}
 end
 
 function Way(el::XMLElement)
 	atr = el |> attributes_dict
 	n = get_elements_by_tagname(el, "nd") .|> ((x -> x["ref"]) ∘ attributes_dict)
-	tags = (get_elements_by_tagname(el, "tag") .|> Tag) |> Dict
+	tags = (get_elements_by_tagname(el, "tag") .|> Tag)# |> Dict
 	Way(parse(Int64, atr["id"]), get(atr, "visible", false), parse.(Int64, n), tags)
 end
 
@@ -82,7 +84,7 @@ end
 
 Return all Way elements under the given XML element.
 """
-function ways(el::XMLElement)::Vector{Way}
+function ways(el::XMLElement)
 	@debug "getting ways within XML"
 	get_elements_by_tagname(el, "way") .|> Way
 end
@@ -146,19 +148,29 @@ Data structure containing data from an OSM XML document.
 Read https://wiki.openstreetmap.org/wiki/OSM_XML for more information.
 """
 struct Data
-	nodes::Dict{Int64,Node}
-	ways::Dict{Int64,Way}
+	nodes::Vector{Node}
+	ways::Vector{Way}
 end
 
 """
 	Data(::XMLDocument)
 """
-function Data(xdoc::XMLDocument)
-	fn(x) = x .|> (x -> x.ID => x) |> Dict
-	Data(
-		xdoc |> nodes |> fn,
-		xdoc |> ways |> fn,
-	)
+Data(xdoc::XMLDocument) = Data(xdoc |> nodes, xdoc |> ways)
+
+"""
+	Data(::AbstractString)
+
+Create Data from XML string.
+"""
+function Data(doc::AbstractString)
+	xdoc = doc |> parse_string
+	try
+		xdoc |> Data
+	finally
+		@debug "freeing XML document"
+		xdoc |> LightXML.free
+	end
+
 end
 
 """
@@ -167,23 +179,7 @@ end
 Extract OSM XML data from the bytestrem `io`. This could be a file or maybe the
 body of an HTTP response.
 """
-function Data(io::IOStream)
-	xdoc = io |> read |> String |> parse_string
-	try
-		Data(xdoc)
-	finally
-		xdoc |> free
-	end
-end
-
-"""
-	Data(::AbstractString)
-
-Extract OSM XML data from file at file path `fp`.
-"""
-Data(fp::AbstractString) = fp |> open |> Data
-
-
+Data(io::IOStream) = io |> read |> String |> Data
 
 """
 	ENU(X, Y, Z, φ, λ)
