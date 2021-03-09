@@ -1,59 +1,61 @@
 module OSM
 
-using LightXML
+using EzXML
 
 const Tag = Pair{Symbol,String}
+#const Tags = Dict{Symbol,String}
+const Tags = Vector{Tag}
 
-function Tag(el::XMLElement)
-	atr = el |> attributes_dict
-	Symbol(replace(atr["k"], ":" => "_")) => atr["v"]
+function Tag(el::EzXML.Node)
+	Symbol(replace(el["k"], ":" => "_")) => el["v"]
+end
+
+function Tags(el::EzXML.Node)
+	map(Tag, filter(e -> e.name == "tag", elements(el))) # |> Dict
 end
 
 struct Node
 	ID::Int64
 	lat::Float64
 	lon::Float64
-	#tags::Dict{Symbol,String}
-	tags::Vector{Tag}
+	tags::Tags
 end
 
 """
-	Node(::XMLElement)
+	Node(::EzXML.Node)
 
 Create a Node object from the OSM XML Element.
 For more information about nodes read https://wiki.openstreetmap.org/wiki/Node.
 """
-function Node(el::XMLElement)
-	atr = el |> attributes_dict
-	tags = (get_elements_by_tagname(el, "tag") .|> Tag) #|> Dict
+function Node(el::EzXML.Node)
 	Node(
-		parse(Int64, atr["id"]),
-		parse(Float64, atr["lat"]),
-		parse(Float64, atr["lon"]),
-		tags,
+		parse(Int64, el["id"]),
+		parse(Float64, el["lat"]),
+		parse(Float64, el["lon"]),
+		el |> Tags,
 	)
 end
 
 """
-	nodes(el::XMLElement)
+	nodes(el::EzXML.Node)
 
 Extract all the Nodes from the OSM XML that are children to the given `el` element.
 """
-function nodes(el::XMLElement)
+function nodes(el::EzXML.Node)
 	@debug "getting nodes within XML"
-	get_elements_by_tagname(el, "node") .|> Node
+	map(Node, filter(x -> x.name == "node", elements(el)))
 end
 
 """
-	nodes(doc::XMLDocument)
+	nodes(doc::EzXML.Document)
 
 Extract all the Nodes from the OSM XML document.
 This will start from the root of the document and return all Nodes found.
 """
-nodes(doc::XMLDocument) = doc |> root |> nodes
+nodes(doc::EzXML.Document) = doc |> root |> nodes
 
 """
-	Way(el::XMLElement)
+	Way(el::EzXML.Node)
 
 From OpenStreetMap wiki https://wiki.openstreetmap.org/wiki/Way
 ```
@@ -68,33 +70,42 @@ struct Way
 	ID::Int64
 	visible::Bool
 	nodes::Vector{Int64}
-	#tags::Dict{Symbol,String}
-	tags::Vector{Tag}
+	tags::Tags
 end
 
-function Way(el::XMLElement)
-	atr = el |> attributes_dict
-	n = get_elements_by_tagname(el, "nd") .|> ((x -> x["ref"]) ∘ attributes_dict)
-	tags = (get_elements_by_tagname(el, "tag") .|> Tag)# |> Dict
-	Way(parse(Int64, atr["id"]), get(atr, "visible", false), parse.(Int64, n), tags)
+function Way(el::EzXML.Node)
+	#n = get_elements_by_tagname(el, "nd") .|> ((x -> x["ref"]) ∘ attributes_dict)
+
+	n = map(
+		x -> parse(Int64, x["ref"]),
+		filter(x -> x.name == "nd", elements(el)),
+	)
+
+	Way(
+		parse(Int64, el["id"]),
+		#get(el, "visible", false),
+		true,
+		n,
+		el |> Tags,
+	)
 end
 
 """
-	ways(el::XMLElement)
+	ways(el::EzXML.Node)
 
 Return all Way elements under the given XML element.
 """
-function ways(el::XMLElement)
+function ways(el::EzXML.Node)
 	@debug "getting ways within XML"
-	get_elements_by_tagname(el, "way") .|> Way
+	map(Way, filter(x -> x.name == "way", elements(el)))
 end
 
 """
-	ways(::XLMDocument)
+	ways(::XLMEzXML.Document)
 
 Return all Way elements in the given XML document.
 """
-ways(doc::XMLDocument) = doc |> root |> ways
+ways(doc::EzXML.Document) = doc |> root |> ways
 
 """
 	name(::Way)::Union{String,Missing}
@@ -127,7 +138,7 @@ function is_road(w::Way)::Bool
 end
 
 """
-	Relation(el::XMLElement)
+	Relation(el::EzXML.Node)
 
 From OpenstreetMap wiki https://wiki.openstreetmap.org/wiki/Relation
 
@@ -153,25 +164,16 @@ struct Data
 end
 
 """
-	Data(::XMLDocument)
+	Data(::EzXML.Document)
 """
-Data(xdoc::XMLDocument) = Data(xdoc |> nodes, xdoc |> ways)
+Data(xdoc::EzXML.Document) = Data(xdoc |> nodes, xdoc |> ways)
 
 """
 	Data(::AbstractString)
 
 Create Data from XML string.
 """
-function Data(doc::AbstractString)
-	xdoc = doc |> parse_string
-	try
-		xdoc |> Data
-	finally
-		@debug "freeing XML document"
-		xdoc |> LightXML.free
-	end
-
-end
+Data(doc::AbstractString) = doc |> parsexml |> Data
 
 """
 	Data(::IOStream)
