@@ -43,7 +43,19 @@ Extract all the Nodes from the OSM XML that are children to the given `el` eleme
 """
 function nodes(el::EzXML.Node)
 	@debug "getting nodes within XML"
-	map(Node, filter(x -> x.name == "node", elements(el)))
+
+	els = elements(el)
+	N = Vector{Node}(undef, length(els))
+	i = Threads.Atomic{Int64}(1)
+
+	@Threads.threads for e in els
+		if e.name != "node"; continue; end
+		n = Node(e)
+		idx = Threads.atomic_add!(i, 1)
+		N[idx] = n
+	end
+
+	N[1:i[]-1]
 end
 
 """
@@ -94,7 +106,19 @@ Return all Way elements under the given XML element.
 """
 function ways(el::EzXML.Node)
 	@debug "getting ways within XML"
-	map(Way, filter(x -> x.name == "way", elements(el)))
+
+	els = elements(el)
+	W = Vector{Way}(undef, length(els))
+	i = Threads.Atomic{Int64}(1)
+
+	@Threads.threads for e in els
+		if e.name != "way"; continue; end
+		w = Way(e)
+		idx = Threads.atomic_add!(i, 1)
+		W[idx] = w
+	end
+
+	W[1:i[]-1]
 end
 
 """
