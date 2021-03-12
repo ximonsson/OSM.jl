@@ -74,13 +74,10 @@ struct Way
 end
 
 function Way(el::EzXML.Node)
-	#n = get_elements_by_tagname(el, "nd") .|> ((x -> x["ref"]) ∘ attributes_dict)
-
 	n = map(
 		x -> parse(Int64, x["ref"]),
 		filter(x -> x.name == "nd", elements(el)),
 	)
-
 	Way(
 		parse(Int64, el["id"]),
 		#get(el, "visible", false),
