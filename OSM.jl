@@ -1,17 +1,17 @@
 module OSM
 
-using EzXML
+using LibExpat, EzXML
 
 const Tag = Pair{Symbol,String}
-#const Tags = Dict{Symbol,String}
-const Tags = Vector{Tag}
+const Tags = Dict{Symbol,String}
+#const Tags = Vector{Tag}
 
 function Tag(el::EzXML.Node)
 	Symbol(replace(el["k"], ":" => "_")) => el["v"]
 end
 
 function Tags(el::EzXML.Node)
-	map(Tag, filter(e -> e.name == "tag", elements(el))) # |> Dict
+	map(Tag, filter(e -> e.name == "tag", elements(el))) |> Dict
 end
 
 struct Node
@@ -33,6 +33,15 @@ function Node(el::EzXML.Node)
 		parse(Float64, el["lat"]),
 		parse(Float64, el["lon"]),
 		el |> Tags,
+	)
+end
+
+function Node(attr::Dict{AbstractString,AbstractString})
+	Node(
+		parse(Int64, attr["id"]),
+		parse(Float64, attr["lat"]),
+		parse(Float64, attr["lon"]),
+		Tags(),
 	)
 end
 
@@ -107,18 +116,17 @@ Return all Way elements under the given XML element.
 function ways(el::EzXML.Node)
 	@debug "getting ways within XML"
 
-	els = elements(el)
+	els = filter(x -> x.name == "way", elements(el))
 	W = Vector{Way}(undef, length(els))
 	i = Threads.Atomic{Int64}(1)
 
 	@Threads.threads for e in els
-		if e.name != "way"; continue; end
 		w = Way(e)
 		idx = Threads.atomic_add!(i, 1)
 		W[idx] = w
 	end
 
-	W[1:i[]-1]
+	return W
 end
 
 """
@@ -203,6 +211,32 @@ Extract OSM XML data from the bytestrem `io`. This could be a file or maybe the
 body of an HTTP response.
 """
 Data(io::IOStream) = io |> read |> String |> Data
+
+
+
+function parsefile(fp::AbstractString)
+	N = 0
+	count(_, name, _) = if name == "node"; N += 1; end
+
+	cb = LibExpat.XPCallbacks()
+	cb.start_element = count
+	LibExpat.parsefile(fp, cb)
+
+	i = 1
+	nodes = Vector{Node}(undef, N)
+	function create(_, name, attr)
+		if name == "node"
+			nodes[i] = OSM.Node(attr)
+			i += 1
+		end
+	end
+
+	cb.start_element = create
+	LibExpat.parsefile(fp, cb)
+
+	nodes
+end
+
 
 """
 	ENU(X, Y, Z, φ, λ)
