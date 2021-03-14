@@ -212,25 +212,15 @@ body of an HTTP response.
 """
 Data(io::IOStream) = io |> read |> String |> Data
 
-
-
 function parsefile(fp::AbstractString)
-	N = 0
-	count(_, name, _) = if name == "node"; N += 1; end
-
-	cb = LibExpat.XPCallbacks()
-	cb.start_element = count
-	LibExpat.parsefile(fp, cb)
-
-	i = 1
-	nodes = Vector{Node}(undef, N)
+	nodes = Vector{Node}()
 	function create(_, name, attr)
 		if name == "node"
-			nodes[i] = OSM.Node(attr)
-			i += 1
+			push!(nodes, OSM.Node(attr))
 		end
 	end
 
+	cb = LibExpat.XPCallbacks()
 	cb.start_element = create
 	LibExpat.parsefile(fp, cb)
 
