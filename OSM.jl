@@ -212,8 +212,14 @@ body of an HTTP response.
 """
 Data(io::IOStream) = io |> read |> String |> Data
 
+"""
+	parsefile(fp::AbstractString)
+
+Parse an XML and return an OSM.Data object.
+"""
 function parsefile(fp::AbstractString)
 	nodes = Vector{Node}()
+
 	function create(_, name, attr)
 		if name == "node"
 			push!(nodes, OSM.Node(attr))
@@ -224,7 +230,7 @@ function parsefile(fp::AbstractString)
 	cb.start_element = create
 	LibExpat.parsefile(fp, cb)
 
-	nodes
+	Data(nodes, [])
 end
 
 
