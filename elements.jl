@@ -1,3 +1,8 @@
+"""
+	Tag <: Pair{Symbol,String}
+
+An element tag.
+"""
 const Tag = Pair{Symbol,String}
 const Tags = Dict{Symbol,String}
 
@@ -42,8 +47,8 @@ OSM Node; for more information about nodes read https://wiki.openstreetmap.org/w
 """
 struct Node <: Element
 	ID::Int64
-	lat::Float64
-	lon::Float64
+	λ::Float64
+	ϕ::Float64
 	tags::Tags
 end
 
@@ -55,8 +60,8 @@ Create a Node object from the OSM XML Element.
 function Node(el::EzXML.Node)
 	Node(
 		parse(Int64, el["id"]),
-		parse(Float64, el["lat"]),
 		parse(Float64, el["lon"]),
+		parse(Float64, el["lat"]),
 		el |> Tags,
 	)
 end
@@ -69,8 +74,8 @@ Create a Node from XML node attributes
 function Node(attr::Dict{AbstractString,AbstractString})
 	Node(
 		parse(Int64, attr["id"]),
-		parse(Float64, attr["lat"]),
 		parse(Float64, attr["lon"]),
+		parse(Float64, attr["lat"]),
 		Tags(),
 	)
 end

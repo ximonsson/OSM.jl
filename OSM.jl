@@ -48,11 +48,16 @@ Coordinates need to be WGS48 geodetic coordinates.
 
 TODO support other coordinate systems?
 """
-function extract(d::Data, p::Vector{Tuple{AbstractFloat,AbstractFloat}})
-	# close the polygon if needed
-	# TODO check if this modifies the vector
-	p[1] != p[end] && push!(p, p[1])
+function extract(D::Data, P::Polygon)
+	# find nodes that are inside the polygon then filter our ways that have a
+	# node within the remaing list
 
+	n = filter(∈(P), D.nodes)
+
+	nids = map(n -> n.ID, n)
+	w = filter(w -> any(w.nodes .∈ (nids,)), D.ways)
+
+	Data(n, w, Vector{Relation}())
 end
 
 """

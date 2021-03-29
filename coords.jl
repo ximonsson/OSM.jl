@@ -38,8 +38,49 @@ Convert from geodetic coordinates to ECEF.
 """
 function ECEF(φ, λ, h = 0)
 	N = Re / √(1 - e^2 * sin(φ)^2)
-
-	(N + h) * cos(φ) * cos(λ),
-	(N + h) * cos(φ) * sin(λ),
-	((1 - e^2) * N + h) * sin(φ)
+	(
+		(N + h) * cos(φ) * cos(λ),
+		(N + h) * cos(φ) * sin(λ),
+		((1 - e^2) * N + h) * sin(φ)
+	)
 end
+
+abstract type Coordinate end
+
+"""
+Longitude and latitude.
+"""
+const GeodeticWGS48 = Tuple{Real,Real}
+
+# ==(a::GeodeticWGS48, b::GeodeticWGS48) = a[1] == b[1] && a[2] == b[2]
+
+"""
+Polygon of geodetic WGS48 coordinates.
+"""
+const Polygon = Vector{GeodeticWGS48}
+
+"""
+	in(::GeodeticWGS48, ::Polygon)
+
+Determine if the coordinate is within the polygon.
+
+This is done using the [Even-odd Rule](https://en.wikipedia.org/wiki/Even%E2%80%93odd_rule).
+"""
+function Base.in((λ, ϕ)::GeodeticWGS48, P::Polygon)
+	edges = zip([P[end]; P[1:end-1]], P)
+	found = false
+
+	for (a, b) in edges
+		found ⊻= ((a[2] > ϕ) ⊻ (b[2] > ϕ)) && (a[1] + (ϕ - a[2]) / (b[2] - a[2]) * (b[1] - a[1]) < λ)
+	end
+
+	found
+end
+
+"""
+	in(::Node, ::Polygon)
+
+Determine if the `Node` is within the `Polygon`.
+"""
+Base.in(n::Node, P::Polygon) = (n.λ, n.ϕ) ∈ P
+
