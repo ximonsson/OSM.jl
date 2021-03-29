@@ -133,8 +133,7 @@ function Way(el::EzXML.Node)
 	)
 	Way(
 		parse(Int64, el["id"]),
-		#get(el, "visible", false),
-		true,
+		true,#get(el, "visible", false),
 		n,
 		el |> Tags,
 	)
@@ -152,6 +151,11 @@ function Way(attr::Dict{AbstractString,AbstractString})
 	)
 end
 
+"""
+	addnode(w::Way, n::Int64)
+
+Add node reference `n` to `w`.
+"""
 addnode(w::Way, n::Int64) = push!(w.nodes, n)
 
 """
