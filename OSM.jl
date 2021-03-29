@@ -50,14 +50,29 @@ TODO support other coordinate systems?
 """
 function extract(D::Data, P::Polygon)
 	# find nodes that are inside the polygon then filter our ways that have a
-	# node within the remaing list
+	# node within the remaining list
 
-	n = filter(∈(P), D.nodes)
+	ns = Vector{Node}()
+	ws = Vector{Way}()
+	rs = Vector{Relation}()
 
-	nids = map(n -> n.ID, n)
-	w = filter(w -> any(w.nodes .∈ (nids,)), D.ways)
+	nids = Vector{Int64}()
 
-	Data(n, w, Vector{Relation}())
+	lk = ReentrantLock()
+
+	@Threads.threads for n in D.nodes
+		if n ∈ P
+			lock(() -> (push!(ns, n); push!(nids, n.ID)), lk)
+		end
+	end
+
+	@Threads.threads for w in D.ways
+		if any(w.nodes .∈ (nids,))
+			lock(() -> push!(ws, w), lk)
+		end
+	end
+
+	Data(ns, ws, rs)
 end
 
 """
