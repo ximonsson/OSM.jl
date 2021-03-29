@@ -14,8 +14,30 @@ function Tags(el::EzXML.Node)
 	map(Tag, filter(e -> e.name == "tag", elements(el))) |> Dict
 end
 
+"""
+Basic element in OSM data. Can be either a Node, Way or Relation.
+"""
 abstract type Element end
 
+"""
+	tag(e::Element, t::Tag)
+
+Add tag `t` to the `Element` struct.
+"""
+function tag(e::Element, t::Tag)
+	e.tags[t.first] = t.second
+end
+
+"""
+	tag(e::Element, k::AbstractString, v::AbstractString)
+"""
+function tag(e::Element, k::AbstractString, v::AbstractString)
+	e.tags[Symbol(replace(k, ":" => "_"))] = v
+end
+
+"""
+OSM Node; for more information about nodes read https://wiki.openstreetmap.org/wiki/Node.
+"""
 struct Node <: Element
 	ID::Int64
 	lat::Float64
@@ -27,7 +49,6 @@ end
 	Node(::EzXML.Node)
 
 Create a Node object from the OSM XML Element.
-For more information about nodes read https://wiki.openstreetmap.org/wiki/Node.
 """
 function Node(el::EzXML.Node)
 	Node(
@@ -38,6 +59,11 @@ function Node(el::EzXML.Node)
 	)
 end
 
+"""
+	Node(::Dict{AbstractString,AbstractString})
+
+Create a Node from XML node attributes
+"""
 function Node(attr::Dict{AbstractString,AbstractString})
 	Node(
 		parse(Int64, attr["id"]),
@@ -78,7 +104,7 @@ This will start from the root of the document and return all Nodes found.
 nodes(doc::EzXML.Document) = doc |> root |> nodes
 
 """
-	Way(el::EzXML.Node)
+	struct Way <: Element
 
 From OpenStreetMap wiki https://wiki.openstreetmap.org/wiki/Way
 ```
@@ -96,6 +122,10 @@ struct Way <: Element
 	tags::Tags
 end
 
+"""
+	Way(el::EzXML.Node)
+
+"""
 function Way(el::EzXML.Node)
 	n = map(
 		x -> parse(Int64, x["ref"]),
@@ -109,6 +139,20 @@ function Way(el::EzXML.Node)
 		el |> Tags,
 	)
 end
+
+"""
+	Way(attr::Dict{AbstractString,AbstractString})
+"""
+function Way(attr::Dict{AbstractString,AbstractString})
+	Way(
+		parse(Int64, attr["id"]),
+		get(attr, "visible", false),
+		Vector{Int64}(),
+		Tags(),
+	)
+end
+
+addnode(w::Way, n::Int64) = push!(w.nodes, n)
 
 """
 	ways(el::EzXML.Node)
@@ -227,12 +271,19 @@ function parsefile(fp::AbstractString)
 
 	function create(_, name, attr)
 		if name == "node"
-			el = n = OSM.Node(attr)
-			push!(nodes, n)
+			el = OSM.Node(attr)
+			push!(nodes, el)
 		elseif name == "way"
-
-		elseif name == "tag"
-
+			el = OSM.Way(attr)
+			push!(ways, el)
+		elseif name == "relation"
+			# TODO
+			el = nothing
+		elseif name == "nd"
+			# safe to assume it is a way?
+			addnode(el, parse(Int64, attr["ref"]))
+		elseif name == "tag" && !isnothing(el)
+			tag(el, attr["k"], attr["v"])
 		end
 	end
 
