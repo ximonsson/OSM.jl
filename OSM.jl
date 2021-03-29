@@ -14,7 +14,9 @@ function Tags(el::EzXML.Node)
 	map(Tag, filter(e -> e.name == "tag", elements(el))) |> Dict
 end
 
-struct Node
+abstract type Element end
+
+struct Node <: Element
 	ID::Int64
 	lat::Float64
 	lon::Float64
@@ -87,7 +89,7 @@ one whose last node on the way is also the first on that way. A closed way may b
 either as a closed polyline, or an area, or both.
 ```
 """
-struct Way
+struct Way <: Element
 	ID::Int64
 	visible::Bool
 	nodes::Vector{Int64}
@@ -179,7 +181,7 @@ A member of a relation can optionally have a role which describes the part that 
 feature plays within a relation.
 ```
 """
-struct Relation
+struct Relation <: Element
 	# TODO
 end
 
@@ -215,14 +217,22 @@ Data(io::IOStream) = io |> read |> String |> Data
 """
 	parsefile(fp::AbstractString)
 
-Parse an XML and return an OSM.Data object.
+Parse an XML file and return an OSM.Data object.
 """
 function parsefile(fp::AbstractString)
 	nodes = Vector{Node}()
+	ways = Vector{Way}()
+
+	el = nothing
 
 	function create(_, name, attr)
 		if name == "node"
-			push!(nodes, OSM.Node(attr))
+			el = n = OSM.Node(attr)
+			push!(nodes, n)
+		elseif name == "way"
+
+		elseif name == "tag"
+
 		end
 	end
 
@@ -230,7 +240,7 @@ function parsefile(fp::AbstractString)
 	cb.start_element = create
 	LibExpat.parsefile(fp, cb)
 
-	Data(nodes, [])
+	Data(nodes, ways)
 end
 
 
