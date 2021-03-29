@@ -51,7 +51,6 @@ function extract(D::Data, P::Polygon)
 	ns = sizehint!(Vector{Node}(), length(D.nodes))
 	ws = sizehint!(Vector{Way}(), length(D.ways))
 	rs = sizehint!(Vector{Relation}(), length(D.relations))
-	nids = sizehint!(Vector{Int64}(), length(D.nodes))
 
 	# find nodes that are inside the polygon then filter our ways that have a
 	# node within the remaining list
@@ -60,9 +59,11 @@ function extract(D::Data, P::Polygon)
 
 	@Threads.threads for n in D.nodes
 		if n ∈ P
-			lock(() -> (push!(ns, n); push!(nids, n.ID)), lk)
+			lock(() -> push!(ns, n), lk)
 		end
 	end
+
+	nids = map(n -> n.ID, ns)
 
 	@Threads.threads for w in D.ways
 		if any(w.nodes .∈ (nids,))
