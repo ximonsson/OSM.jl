@@ -83,4 +83,3 @@ end
 Determine if the `Node` is within the `Polygon`.
 """
 Base.in(n::Node, P::Polygon) = (n.λ, n.ϕ) ∈ P
-

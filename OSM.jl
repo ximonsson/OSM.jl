@@ -35,7 +35,6 @@ body of an HTTP response.
 """
 Data(io::IOStream) = io |> read |> String |> Data
 
-
 """
 	extract(::Data, ::Vector{Tuple{AbstractFloat,AbstractFloat}})
 
@@ -49,14 +48,13 @@ Coordinates need to be WGS48 geodetic coordinates.
 TODO support other coordinate systems?
 """
 function extract(D::Data, P::Polygon)
+	ns = sizehint!(Vector{Node}(), length(D.nodes))
+	ws = sizehint!(Vector{Way}(), length(D.ways))
+	rs = sizehint!(Vector{Relation}(), length(D.relations))
+	nids = sizehint!(Vector{Int64}(), length(D.nodes))
+
 	# find nodes that are inside the polygon then filter our ways that have a
 	# node within the remaining list
-
-	ns = Vector{Node}()
-	ws = Vector{Way}()
-	rs = Vector{Relation}()
-
-	nids = Vector{Int64}()
 
 	lk = ReentrantLock()
 
@@ -81,8 +79,8 @@ end
 Parse an XML file and return an OSM.Data object.
 """
 function parsefile(fp::AbstractString)
-	nodes = Vector{Node}()
-	ways = Vector{Way}()
+	nodes = sizehint!(Vector{Node}(), 1e6 |> Int)
+	ways = sizehint!(Vector{Way}(), 1e5 |> Int)
 	relations = Vector{Relation}()
 
 	el = nothing  # current element
