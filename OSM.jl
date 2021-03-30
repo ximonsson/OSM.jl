@@ -5,6 +5,10 @@ using LibExpat, EzXML
 include("elements.jl")
 include("coords.jl")
 
+function index(ns::Vector{Node}; precision = 3)
+
+end
+
 """
 Data structure containing data from an OSM XML document.
 Read https://wiki.openstreetmap.org/wiki/OSM_XML for more information.
@@ -34,6 +38,38 @@ Extract OSM XML data from the bytestrem `io`. This could be a file or maybe the
 body of an HTTP response.
 """
 Data(io::IOStream) = io |> read |> String |> Data
+
+"""
+	filternodes(::Function, ::Vector{Node})
+
+Filter nodes on function `fn`.
+"""
+function filternodes(fn::Function, ns::Vector{Node})
+	idx = Vector{Bool}(undef, length(ns))
+	@Threads.threads for i in 1:length(ns)
+		idx[i] = fn(ns[i])
+	end
+	ns[idx]
+end
+
+"""
+	waynodes(::Date, ::Way)
+
+Extract all the nodes that are part of the way.
+"""
+function waynodes(D::Data, w::Way)::Vector{Node}
+	filternodes(n -> n.ID ∈ w.nodes, D.nodes)
+end
+
+"""
+	waynodes(::Date, ::Vector{Way})
+
+Extract all the nodes that are part of the way.
+"""
+function waynodes(D::Data, ws::Vector{Way})::Vector{Node}
+	ns = reduce(vcat, map(w -> w.nodes, ws)) |> unique
+	filternodes(n -> n.ID ∈ ns, D.nodes)
+end
 
 """
 	extract(ns::Vector{Node}, P::Polygon)
