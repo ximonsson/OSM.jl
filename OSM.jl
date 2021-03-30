@@ -36,39 +36,38 @@ body of an HTTP response.
 Data(io::IOStream) = io |> read |> String |> Data
 
 """
-	extract(::Data, ::Vector{Tuple{AbstractFloat,AbstractFloat}})
+	extract(ns::Vector{Node}, P::Polygon)
+"""
+function extract(ns::Vector{Node}, P::Polygon)
+	idx = Vector{Bool}(undef, length(ns))
+
+	@Threads.threads for i in 1:length(ns)
+		idx[i] = ns[i] ∈ P
+	end
+
+	ns[idx]
+end
+
+"""
+	extract(::Data, ::Polygon)
 
 Extract area within polygon from `Data` object.
-
-If the first and last coordinate do not match, the first will be pushed to the polygon
-to close it.
-
-Coordinates need to be WGS48 geodetic coordinates.
-
-TODO support other coordinate systems?
 """
 function extract(D::Data, P::Polygon)
-	ns = Vector{Bool}(undef, length(D.nodes))
-	ws = Vector{Bool}(undef, length(D.ways))
-	rs = Vector{Relation}()
-
 	# find nodes that are inside the polygon then filter our ways that have a
 	# node within the remaining list
 
-	@Threads.threads for i in 1:length(ns)
-		ns[i] = D.nodes[i] ∈ P
-	end
-
-	ns = D.nodes[ns]
+	ns = extract(D.nodes, P)
 	nids = map(n -> n.ID, ns)
 
+	ws = Vector{Bool}(undef, length(D.ways))
 	@Threads.threads for i in 1:length(ws)
 		ws[i] = any(D.ways[i].nodes .∈ (nids,))
 	end
 
-	ws = D.ways[ws]
+	rs = Vector{Relation}()  # TODO
 
-	Data(ns, ws, rs)
+	Data(ns, D.ways[ws], rs)
 end
 
 """
