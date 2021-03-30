@@ -5,9 +5,70 @@ using LibExpat, EzXML
 include("elements.jl")
 include("coords.jl")
 
-function index(ns::Vector{Node}; precision = 3)
+"""
+	struct Index
+		I::Matrix{Vector{Int64}}
+		upperleft::Tuple{Float32,Float32}
+		precision::Int
+	end
 
+This index is basically a Matrix where each element represents a square of precision
+`precision` which points to a list of nodes that are inside this square.
+"""
+struct Index
+	I::Matrix{Vector{Int64}}
+	precision::Int
+	V::Matrix{Tuple{Float32,Float32}}
 end
+
+function coord2index(p::AbstractFloat; precision = 3)
+	(round(p, RoundDown, digits = precision) * 10^precision) |> Int
+end
+
+function space(ns::Vector{Node}; precision = 3)
+	# round all node coordinates down to precision
+	Λ = map(n -> n.λ |> coord2index, ns)
+	Φ = map(n -> n.ϕ |> coord2index, ns)
+
+	# vector space
+	Λr = minimum(Λ):maximum(Λ)
+	Φr = minimum(Φ):maximum(Φ)
+	V = zip(
+		repeat(Λr, 1, length(Φr)),
+		repeat(Φr', length(Λr), 1),
+	) |> collect
+
+	V
+end
+
+"""
+	Index(::Vector{Node}; precision = 3)
+
+Create an index over the nodes for faster region extraction.
+"""
+function Index(ns::Vector{Node}; precision::Int = 3)
+	# round all node coordinates down to precision
+	Λ = map(n -> n.λ |> coord2index, ns)
+	Φ = map(n -> n.ϕ |> coord2index, ns)
+
+	# create vector space
+	V = space(ns, precision = precision)
+
+	# fill the index matrix
+	I = reshape([Vector{Int64}() for _ in 1:length(V)], size(V))
+
+	for (i, c) in enumerate(zip(Λ, Φ))
+		j = CartesianIndex(c .- V[1] .+ 1)
+		push!(I[j], ns[i].ID)
+	end
+
+	Index(I, precision, V)
+end
+
+"""
+Overload indexing.
+"""
+Base.getindex(I::Index, i...) = Base.getindex(I.I, i...)
 
 """
 Data structure containing data from an OSM XML document.
@@ -38,6 +99,15 @@ Extract OSM XML data from the bytestrem `io`. This could be a file or maybe the
 body of an HTTP response.
 """
 Data(io::IOStream) = io |> read |> String |> Data
+
+function Base.show(io::IO, D::Data)
+	print(
+		io,
+		"""OSM.Data:
+			$(length(D.nodes)) nodes
+			$(length(D.ways)) ways""",
+	)
+end
 
 """
 	filternodes(::Function, ::Vector{Node})
