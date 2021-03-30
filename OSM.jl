@@ -48,28 +48,25 @@ Coordinates need to be WGS48 geodetic coordinates.
 TODO support other coordinate systems?
 """
 function extract(D::Data, P::Polygon)
-	ns = sizehint!(Vector{Node}(), length(D.nodes))
-	ws = sizehint!(Vector{Way}(), length(D.ways))
-	rs = sizehint!(Vector{Relation}(), length(D.relations))
+	ns = Vector{Bool}(undef, length(D.nodes))
+	ws = Vector{Bool}(undef, length(D.ways))
+	rs = Vector{Relation}()
 
 	# find nodes that are inside the polygon then filter our ways that have a
 	# node within the remaining list
 
-	lk = ReentrantLock()
-
-	@Threads.threads for n in D.nodes
-		if n ∈ P
-			lock(() -> push!(ns, n), lk)
-		end
+	@Threads.threads for i in 1:length(ns)
+		ns[i] = D.nodes[i] ∈ P
 	end
 
+	ns = D.nodes[ns]
 	nids = map(n -> n.ID, ns)
 
-	@Threads.threads for w in D.ways
-		if any(w.nodes .∈ (nids,))
-			lock(() -> push!(ws, w), lk)
-		end
+	@Threads.threads for i in 1:length(ws)
+		ws[i] = any(D.ways[i].nodes .∈ (nids,))
 	end
+
+	ws = D.ways[ws]
 
 	Data(ns, ws, rs)
 end
