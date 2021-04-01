@@ -8,76 +8,110 @@ include("coords.jl")
 """
 	struct Index
 		I::Matrix{Vector{Int64}}
-		upperleft::Tuple{Float32,Float32}
 		precision::Int
+		O::Tuple{Int,Int}
 	end
 
 This index is basically a Matrix where each element represents a square of precision
 `precision` which points to a list of nodes that are inside this square.
 """
 struct Index
-	I::Matrix{Vector{Int64}}
+	I::Matrix{Array{Int64,1}}
 	precision::Int
-	V::Matrix{Tuple{Float32,Float32}}
+	O::Tuple{Int,Int}
 end
 
-function coord2index(p::AbstractFloat; precision = 3)
-	(round(p, RoundDown, digits = precision) * 10^precision) |> Int
-end
+coord2index(p::AbstractFloat, precision::Int) = trunc(Int, p * 10^precision)
 
-function space(ns::Vector{Node}; precision = 3)
-	# round all node coordinates down to precision
-	Λ = map(n -> n.λ |> coord2index, ns)
-	Φ = map(n -> n.ϕ |> coord2index, ns)
-
-	# vector space
-	Λr = minimum(Λ):maximum(Λ)
-	Φr = minimum(Φ):maximum(Φ)
-	V = zip(
-		repeat(Λr, 1, length(Φr)),
-		repeat(Φr', length(Λr), 1),
-	) |> collect
-
-	V
-end
+coord2index(p::Tuple{AbstractFloat,AbstractFloat}, precision::Int) = coord2index.(p, precision)
 
 """
 	Index(::Vector{Node}; precision = 3)
 
 Create an index over the nodes for faster region extraction.
 """
-function Index(ns::Vector{Node}; precision::Int = 3)
+function Index(ns::Vector{Node}; precision::Int = 2)
 	# round all node coordinates down to precision
-	Λ = map(n -> n.λ |> coord2index, ns)
-	Φ = map(n -> n.ϕ |> coord2index, ns)
+	f(x) = coord2index(x, precision)
+	Λ = map(n -> n.λ |> f, ns)
+	Φ = map(n -> n.ϕ |> f, ns)
 
 	# create vector space
-	V = space(ns, precision = precision)
+	O = (minimum(Λ), minimum(Φ))  # origin
+	Σ = (abs(maximum(Λ) - minimum(Λ)) + 1, abs(maximum(Φ) - minimum(Φ)) + 1)
 
 	# fill the index matrix
-	I = reshape([Vector{Int64}() for _ in 1:length(V)], size(V))
-
+	#I = reshape([Vector{Int64}() for _ in 1:*(Σ...)], Σ)
+	I = Matrix{Vector{Int64}}(undef, Σ)
 	for (i, c) in enumerate(zip(Λ, Φ))
-		j = CartesianIndex(c .- V[1] .+ 1)
+		j = CartesianIndex(c .- O .+ 1)
+
+		if !isdefined(I, LinearIndices(I)[j])
+			I[j] = Vector{Int64}()
+		end
+
 		push!(I[j], ns[i].ID)
 	end
 
-	Index(I, precision, V)
+	Index(I, precision, O)
 end
 
 """
 Overload indexing.
 """
-Base.getindex(I::Index, i...) = Base.getindex(I.I, i...)
+function Base.getindex(I::Index, λ::AbstractFloat, ϕ::AbstractFloat)
+	i = (coord2index(λ), coord2index(ϕ)) .- I.O
+	Base.getindex(I.I, i...)
+end
+
+"""
+function Base.getindex(I::Index, Λ::AbstractRange, Φ::AbstractRange)
+	# fix step size
+	Λ = minimum(Λ):1/10^I.precision:maximum(Λ)
+	Φ = minimum(Φ):1/10^I.precision:maximum(Φ)
+
+	# convert to index in matrix
+	Λ = (Λ .|> coord2index) .- I.V[1]
+	Φ = (Φ .|> coord2index) .- I.V[2]
+
+	Base.getindex(I.I, Λ, Φ)
+end
+"""
+
+function Base.getindex(I::Index, UL::GeodeticWGS48, LR::GeodeticWGS48)
+	# convert to index in matrix
+	Λ = coord2index.(UL[1]:1/10^I.precision:LR[1], I.precision)
+	Φ = coord2index.(LR[2]:1/10^I.precision:UL[2], I.precision)
+
+	# new origin
+	O = (Λ[1], Φ[1])
+
+	Index(
+		Base.getindex(I.I, Λ .- I.O[1], Φ .- I.O[2]),
+		I.precision,
+		(Λ[1], Φ[1]),
+	)
+end
 
 """
 Data structure containing data from an OSM XML document.
 Read https://wiki.openstreetmap.org/wiki/OSM_XML for more information.
 """
 struct Data
-	nodes::Vector{Node}
+	nodes::Dict{Int64,Node}
 	ways::Vector{Way}
 	relations::Vector{Relation}
+	I::Index
+end
+
+function Data(ns::Vector{Node}, ws::Vector{Way}, rs::Vector{Relation}, I::Index)
+	nodes = Dict([n.ID => n for n in ns])
+	Data(nodes, ws, rs, I)
+end
+
+function Data(ns::Vector{Node}, ws::Vector{Way}, rs::Vector{Relation})
+	nodes = Dict([n.ID => n for n in ns])
+	Data(nodes, ws, rs, ns |> Index)
 end
 
 """
@@ -123,23 +157,11 @@ function filternodes(fn::Function, ns::Vector{Node})
 end
 
 """
-	waynodes(::Date, ::Way)
+	waynodes_(D::Data, w::Way)
 
-Extract all the nodes that are part of the way.
+Get nodes part of the Way `w`.
 """
-function waynodes(D::Data, w::Way)::Vector{Node}
-	filternodes(n -> n.ID ∈ w.nodes, D.nodes)
-end
-
-"""
-	waynodes(::Date, ::Vector{Way})
-
-Extract all the nodes that are part of the way.
-"""
-function waynodes(D::Data, ws::Vector{Way})::Vector{Node}
-	ns = reduce(vcat, map(w -> w.nodes, ws)) |> unique
-	filternodes(n -> n.ID ∈ ns, D.nodes)
-end
+waynodes(D::Data, w::Way)::Vector{Node} = [D.nodes[ref] for ref in w.nodes]
 
 """
 	extract(ns::Vector{Node}, P::Polygon)
@@ -162,8 +184,7 @@ Extract area within polygon from `Data` object.
 function extract(D::Data, P::Polygon)
 	# find nodes that are inside the polygon then filter our ways that have a
 	# node within the remaining list
-
-	ns = extract(D.nodes, P)
+	ns = extract(values(D.nodes), P)
 	nids = map(n -> n.ID, ns)
 
 	ws = Vector{Bool}(undef, length(D.ways))
@@ -174,6 +195,19 @@ function extract(D::Data, P::Polygon)
 	rs = Vector{Relation}()  # TODO
 
 	Data(ns, D.ways[ws], rs)
+end
+
+function extract(D::Data, UL::GeodeticWGS48, LR::GeodeticWGS48)
+	i = D.I[UL, LR]
+	nids = reduce(vcat, i.I)
+
+	ns = [D.nodes[id] for id in nids]
+
+	# TODO ways
+
+	rs = Vector{Relation}()  # TODO
+
+	Data(ns, D.ways, rs, i)
 end
 
 """
