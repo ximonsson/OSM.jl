@@ -175,7 +175,7 @@ void map_load_primary_ways (int* way_idx, int* way_size, size_t wn)
 	ways_n_primary = wn;
 }
 
-void map_load_seconday_ways (int* way_idx, int* way_size, size_t wn)
+void map_load_secondary_ways (int* way_idx, int* way_size, size_t wn)
 {
 	ways_idx_secondary = way_idx;
 	ways_size_secondary = way_size;

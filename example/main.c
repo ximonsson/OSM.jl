@@ -117,7 +117,9 @@ int main ()
 	init_win (W, H);
 	map_init (W, H);
 	map_load_nodes (vitoria_nodes, NNODES);
-	map_load_primary_ways (way_idx, way_counts, NWAYS);
+	map_load_primary_ways (way_idx, way_counts, 5000);
+	map_load_secondary_ways (way_idx + 5000, way_counts + 5000, 5000);
+	map_load_tertiary_ways (way_idx + 10000, way_counts + 10000, NWAYS - 10000);
 	map_draw (origx, origy, view_width, view_height);
 
 	int done = 0;
