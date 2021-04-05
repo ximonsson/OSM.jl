@@ -1,13 +1,9 @@
 #include <maprender.h>
-#include <SDL2/SDL.h>
 #include <assert.h>
 #include <GL/gl.h>
 #include <GL/glext.h>
-#include "nodes.c"
-#include "ways.c"
+#include <stdio.h>
 
-static SDL_Window* win;
-static SDL_GLContext ctx;
 
 static void check_errors()
 {
@@ -118,44 +114,10 @@ static int compile_shaders ()
 	program = glCreateProgram ();
 	glAttachShader (program, fragmentshader);
 	glAttachShader (program, vertexshader);
-	glLinkProgram  (program);
-	glUseProgram   (program);
+	glLinkProgram (program);
+	glUseProgram (program);
 
 	return 0;
-}
-
-int init_win (int w, int h)
-{
-	int ret = SDL_Init (SDL_INIT_VIDEO);
-	if (ret != 0)
-		return ret;
-
-	SDL_GL_SetAttribute (SDL_GL_DOUBLEBUFFER, 1);
-	SDL_GL_SetAttribute (SDL_GL_DEPTH_SIZE,  24);
-	SDL_GL_SetAttribute (SDL_GL_CONTEXT_PROFILE_MASK, 1);
-	SDL_GL_SetAttribute (SDL_GL_CONTEXT_MAJOR_VERSION, 2);
-	SDL_GL_SetAttribute (SDL_GL_CONTEXT_MINOR_VERSION, 0);
-
-	win = SDL_CreateWindow
-	(
-		"map viewer",
-		SDL_WINDOWPOS_UNDEFINED,
-		SDL_WINDOWPOS_UNDEFINED,
-		w,
-		h,
-		SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN
-	);
-
-	ctx = SDL_GL_CreateContext (win);
-	SDL_GL_SetSwapInterval (1);
-	return 0;
-}
-
-void destroy_win ()
-{
-	SDL_GL_DeleteContext (ctx);
-	SDL_DestroyWindow (win);
-	SDL_Quit ();
 }
 
 static GLuint tex;
@@ -166,16 +128,9 @@ static GLuint vx;
 static GLuint vxo;
 static GLuint vxd;
 
-#define W 1000
-#define H 1000
-#define NWAYS 28663
-#define NNODES 167123
-#define OX -40.497
-#define OY -20.516
-#define ViewW .5
-#define ViewH .5
+#define N_WAYS_DRAW 1024
 
-int init_gl (int w, int h)
+int map_init (int w, int h)
 {
 	if (compile_shaders () != 0)
 		return 1;
@@ -195,25 +150,55 @@ int init_gl (int w, int h)
 	return 0;
 }
 
-static void init ()
-{
-	assert (init_win (W, H) == 0);
-	assert (init_gl (W, H) == 0);
-}
+static int* ways_idx_primary;
+static int* ways_idx_secondary;
+static int* ways_idx_tertiary;
 
-void load_nodes (GLfloat* nodes_, size_t n)
+static int* ways_size_primary;
+static int* ways_size_secondary;
+static int* ways_size_tertiary;
+
+static size_t ways_n_primary;
+static size_t ways_n_secondary;
+static size_t ways_n_tertiary;
+
+void map_load_nodes (float* nodes, size_t n)
 {
-	//memcpy(nodes, nodes_, n * sizeof(float));
 	glBindBuffer (GL_ARRAY_BUFFER, vbo_nodes);
-	glBufferData (GL_ARRAY_BUFFER, n * 2 * sizeof (GLfloat), nodes_, GL_STATIC_DRAW);
+	glBufferData (GL_ARRAY_BUFFER, n * 2 * sizeof (GLfloat), nodes, GL_STATIC_DRAW);
 }
 
-static GLfloat origx = OX;
-static GLfloat origy = OY;
-static GLfloat view_width = ViewW;
-static GLfloat view_height = ViewH;
+void map_load_primary_ways (int* way_idx, int* way_size, size_t wn)
+{
+	ways_idx_primary = way_idx;
+	ways_size_primary = way_size;
+	ways_n_primary = wn;
+}
 
-static void draw ()
+void map_load_seconday_ways (int* way_idx, int* way_size, size_t wn)
+{
+	ways_idx_secondary = way_idx;
+	ways_size_secondary = way_size;
+	ways_n_secondary = wn;
+}
+
+void map_load_tertiary_ways (int* way_idx, int* way_size, size_t wn)
+{
+	ways_idx_tertiary = way_idx;
+	ways_size_tertiary = way_size;
+	ways_n_tertiary = wn;
+}
+
+static void draw_highways (GLint* way_idx, GLsizei* way_size, GLsizei n)
+{
+	for (int i = 0; i < n; i += N_WAYS_DRAW)
+		glMultiDrawArrays (GL_LINE_STRIP, way_idx + i, way_size + i, N_WAYS_DRAW);
+
+	int reset = n % N_WAYS_DRAW;
+	glMultiDrawArrays (GL_LINE_STRIP, way_idx + n - reset, way_size + n - reset, n % N_WAYS_DRAW);
+}
+
+void map_draw (float origx, float origy, float view_width, float view_height)
 {
 	glClear (GL_COLOR_BUFFER_BIT);
 
@@ -224,88 +209,17 @@ static void draw ()
 	glVertexAttrib2f (vxo, origx, origy);
 	glVertexAttrib2f (vxd, view_width, view_height);
 
+	glVertexAttrib4f (color, 0.0, 1.0, 1.0, 1.0);
+	glLineWidth (1.);
+	draw_highways (ways_idx_primary, ways_size_primary, ways_n_primary);
+
+	glVertexAttrib4f (color, 1.0, 0.0, 1.0, 1.0);
+	glLineWidth (1.);
+	draw_highways (ways_idx_secondary, ways_size_secondary, ways_n_secondary);
+
 	glVertexAttrib4f (color, 1.0, 1.0, 1.0, 1.0);
 	glLineWidth (1.);
-
-	int *wi = way_idx;
-	int *wc = way_counts;
-
-	int nn = 1000;
-	int i = 0;
-	for (; i < (NWAYS / nn); i ++)
-		glMultiDrawArrays (GL_LINE_STRIP, wi + i * nn, wc + i * nn, nn);
-	glMultiDrawArrays (GL_LINE_STRIP, wi + i * nn, wc + i * nn, NWAYS % nn);
-
-	//for (int i = 0; i < NWAYS; i ++)
-		//glDrawArrays (GL_LINE_STRIP, wi[i], wc[i]);
+	draw_highways (ways_idx_tertiary, ways_size_tertiary, ways_n_tertiary);
 
 	glDisableVertexAttribArray (vx);
-
-	SDL_GL_SwapWindow (win);
-}
-
-void handle_events (int* done)
-{
-	float delta = 0.01;
-	static SDL_Event ev;
-	while (SDL_PollEvent (&ev))
-	{
-		if (ev.type == SDL_QUIT)
-			*done = 1;
-		else if (ev.type == SDL_KEYUP && ev.key.keysym.sym == SDLK_q)
-			*done = 1;
-
-		if (ev.type == SDL_KEYDOWN)
-		{
-			switch (ev.key.keysym.sym)
-			{
-				case SDLK_w:
-					origy += delta;
-					break;
-
-				case SDLK_s:
-					origy -= delta;
-					break;
-
-				case SDLK_a:
-					origx -= delta;
-					break;
-
-				case SDLK_d:
-					origx += delta;
-					break;
-
-				case SDLK_j:
-					view_width -= delta;
-					view_height -= delta;
-					origx += delta / 2.;
-					origy += delta / 2.;
-					break;
-
-				case SDLK_k:
-					view_width += delta;
-					view_height += delta;
-					origx -= delta / 2.;
-					origy -= delta / 2.;
-					break;
-			}
-		}
-	}
-}
-
-int main ()
-{
-	int w = W, h = H;
-	init ();
-	load_nodes (vitoria_nodes, NNODES);
-	draw ();
-
-	int done = 0;
-	while (!done)
-	{
-		draw ();
-		handle_events (&done);
-	}
-
-	destroy_win ();
 }

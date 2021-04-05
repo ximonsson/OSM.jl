@@ -1,13 +1,13 @@
+#include <stdlib.h>
 
-typedef
-struct way
-{
-	int n;
-	float* points;
-}
-way;
+void map_load_nodes (float* nodes, size_t n) ;
 
-void new_way (way *, int nodes);
+void map_load_primary_ways (int* way_idx, int* way_size, size_t m) ;
 
-void destroy_way (way * v);
+void map_load_secondary_ways (int* way_idx, int* way_size, size_t m) ;
 
+void map_load_tertiary_ways (int* way_idx, int* way_size, size_t m) ;
+
+int map_init (int, int) ;
+
+void map_draw (float origx, float origy, float view_width, float view_height) ;

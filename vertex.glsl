@@ -35,7 +35,6 @@ void main ()
 	vec4 v = P * V * M * vec4 (vertex, 0., 1.);
 
 	gl_Position = v;
-
 	texture_coords = texture_coords_in;
 	color = color_in;
 }
