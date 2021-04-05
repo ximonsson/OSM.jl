@@ -15,7 +15,7 @@ maprender: maprender.c
 
 example: example/main.c maprender
 	mkdir -p bin
-	$(CC) $(INCLUDES) -o bin/map -I./example example/main.c $(LDFLAGS) -lmaprender
+	$(CC) $(CFLAGS) $(INCLUDES) -o bin/map -I./example example/main.c $(LDFLAGS) -lmaprender
 
 clean:
 	rm build/*

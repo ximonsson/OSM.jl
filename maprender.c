@@ -1,6 +1,5 @@
 #include <maprender.h>
 #include <assert.h>
-#include <GL/gl.h>
 #include <GL/glext.h>
 #include <stdio.h>
 
@@ -130,9 +129,9 @@ static int compile_shaders ()
 	return 0;
 }
 
-static GLuint tex;
+static GLuint output;
+static GLuint fbuf;
 static GLuint vbo_nodes;
-static GLuint vbo_tex;
 static GLuint color;
 static GLuint vx;
 static GLuint vxo;
@@ -142,22 +141,49 @@ static GLuint vxd;
 
 static GLsizei w, h;
 
-int map_init (int w_, int h_)
+int map_init (int w_, int h_, GLuint* output_)
 {
 	if (compile_shaders () != 0)
 		return 1;
 
-	// generate vertex buffer for vertices and texture coords
-	glGenBuffers (1, &vbo_nodes);
-	glGenBuffers (1, &vbo_tex);
-
+	// inputs to shader like vertex, color, origin and width
 	vx = glGetAttribLocation (program, "vertex");
 	color = glGetAttribLocation (program, "color_in");
 	vxo = glGetAttribLocation (program, "o");
 	vxd = glGetAttribLocation (program, "d");
 
-	// viewport
+	// viewport settings
 	w = w_, h = h_;
+
+	// generate vertex buffer for vertices a.k.a our nodes
+	glGenBuffers (1, &vbo_nodes);
+
+	//
+	// generate framebuffer that the map will be rendered to.
+	// we will attach a texture to it that will contain the resulting colors.
+	//
+
+	glGenFramebuffers (1, &fbuf);
+	glBindFramebuffer (GL_FRAMEBUFFER, fbuf);
+
+	glGenTextures (1, &output);
+	glBindTexture (GL_TEXTURE_2D, output);
+	glTexImage2D (GL_TEXTURE_2D, 0, GL_RGB, w, h, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+	glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+	glFramebufferTexture2D (GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, output, 0);
+
+	if (glCheckFramebufferStatus (GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+	{
+		fprintf (stderr, "frambuffer not initialized!!\n");
+		return 1;
+	}
+
+	glBindTexture (GL_TEXTURE_2D, 0);
+	glBindFramebuffer (GL_FRAMEBUFFER, 0);
+
+	*output_ = output;
 
 	return 0;
 }
@@ -212,6 +238,8 @@ static void draw_highways (GLint* way_idx, GLsizei* way_size, GLsizei n)
 
 void map_draw (float origx, float origy, float view_width, float view_height)
 {
+	glBindFramebuffer (GL_FRAMEBUFFER, fbuf);
+
 	glUseProgram (program);
 	glClearColor (.1f, .1f, .1f, 1.f);
 	glClear (GL_COLOR_BUFFER_BIT);
@@ -237,4 +265,6 @@ void map_draw (float origx, float origy, float view_width, float view_height)
 	draw_highways (ways_idx_tertiary, ways_size_tertiary, ways_n_tertiary);
 
 	glDisableVertexAttribArray (vx);
+	glUseProgram (0);
+	glBindFramebuffer (GL_FRAMEBUFFER, 0);
 }

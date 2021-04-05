@@ -1,12 +1,10 @@
 #version 460
 
 in vec2 vertex;
-in vec2 texture_coords_in;
 in vec4 color_in;
 in vec2 d;
 in vec2 o;
 
-out vec2 texture_coords;
 out vec4 color;
 
 void main ()
@@ -35,6 +33,5 @@ void main ()
 	vec4 v = P * V * M * vec4 (vertex, 0., 1.);
 
 	gl_Position = v;
-	texture_coords = texture_coords_in;
 	color = color_in;
 }

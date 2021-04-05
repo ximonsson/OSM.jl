@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <GL/gl.h>
 
 /**
  * map_load_nodes loads all the nodes into the vertex buffer ready for rendering.
@@ -41,7 +42,7 @@ void map_load_tertiary_ways (int* way_idx, int* way_size, size_t m) ;
 /**
  * map_init initializes the map renderer to the given size in pixels.
  */
-int map_init (int, int) ;
+int map_init (int, int, GLuint*) ;
 
 /**
  * map_draw will render the map with the loaded nodes and ways.

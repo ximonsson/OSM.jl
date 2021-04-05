@@ -9,6 +9,7 @@
 #include <GL/glext.h>
 #include "nodes.c"
 #include "ways.c"
+#include <assert.h>
 
 #define W 1000
 #define H 1000
@@ -27,6 +28,7 @@ static GLfloat origx = OX;
 static GLfloat origy = OY;
 static GLfloat view_width = ViewW;
 static GLfloat view_height = ViewH;
+static GLuint tex;
 
 
 int init_win (int w, int h)
@@ -112,19 +114,98 @@ void handle_events (int* done)
 	}
 }
 
+float texCoords[] = {
+	0.0f, 0.0f,  // lower-left corner
+	1.0f, 0.0f,  // lower-right corner
+	0.5f, 1.0f   // top-center corner
+};
+
+/*
+float vertices[] = {
+// positions          // colors           // texture coords
+0.5f,  0.5f, 0.0f,   1.0f, 0.0f, 0.0f,   1.0f, 1.0f,   // top right
+0.5f, -0.5f, 0.0f,   0.0f, 1.0f, 0.0f,   1.0f, 0.0f,   // bottom right
+-0.5f, -0.5f, 0.0f,   0.0f, 0.0f, 1.0f,   0.0f, 0.0f,   // bottom left
+-0.5f,  0.5f, 0.0f,   1.0f, 1.0f, 0.0f,   0.0f, 1.0f    // top left
+};
+*/
+
+float vertices[] = {
+	0.5f,  0.5f, 0.0f,  // top right
+	0.5f, -0.5f, 0.0f,  // bottom right
+	-0.5f, -0.5f, 0.0f,  // bottom left
+	-0.5f,  0.5f, 0.0f   // top left
+};
+unsigned int indices[] = {  // note that we start from 0!
+	0, 1, 3,   // first triangle
+	1, 2, 3    // second triangle
+};
+
+const char* vertexSource = "#version 460\n"
+	"in vec2 position;\n"
+	"void main()\n"
+	"{\n"
+	"	gl_Position = vec4(position, 0.0, 1.0);\n"
+	"}\n";
+
+
+const char* fragSource = "#version 460\n"
+	"out vec4 FragColor;\n"
+	"void main()\n"
+	"{\n"
+	"	FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);\n"
+	"}\n";
+
 int main ()
 {
 	init_win (W, H);
-	map_init (W, H);
+	assert (map_init (W, H, &tex) == 0);
 	map_load_nodes (vitoria_nodes, NNODES);
-	map_load_primary_ways (way_idx, way_counts, 5000);
-	map_load_secondary_ways (way_idx + 5000, way_counts + 5000, 5000);
-	map_load_tertiary_ways (way_idx + 10000, way_counts + 10000, NWAYS - 10000);
+	map_load_primary_ways (way_idx, way_counts, NWAYS);
+	//map_load_secondary_ways (way_idx + 5000, way_counts + 5000, 5000);
+	//map_load_tertiary_ways (way_idx + 10000, way_counts + 10000, NWAYS - 10000);
+
+	unsigned int vertexShader;
+	vertexShader = glCreateShader(GL_VERTEX_SHADER);
+	glShaderSource(vertexShader, 1, &vertexSource, NULL);
+	glCompileShader(vertexShader);
+
+	unsigned int fragmentShader;
+	fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+	glShaderSource(fragmentShader, 1, &fragSource, NULL);
+	glCompileShader(fragmentShader);
+
+	unsigned int shaderProgram;
+	shaderProgram = glCreateProgram();
+
+	glAttachShader(shaderProgram, vertexShader);
+	glAttachShader(shaderProgram, fragmentShader);
+	glLinkProgram(shaderProgram);
+
+
+	unsigned int VBO;
+	glGenBuffers(1, &VBO);
+	glBindBuffer(GL_ARRAY_BUFFER, VBO);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 
 	int done = 0;
 	while (!done)
 	{
 		map_draw (origx, origy, view_width, view_height);
+
+		glUseProgram (shaderProgram);
+
+		glBindTexture (GL_TEXTURE_2D, tex);
+
+		// 1. then set the vertex attributes pointers
+		//glEnableVertexAttribArray(VBO);
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+		glEnableVertexAttribArray(0);
+
+		glUseProgram (0);
+
+		//glBindTexture (GL_TEXTURE_2D, 0);
+
 		SDL_GL_SwapWindow (win);
 		handle_events (&done);
 	}
