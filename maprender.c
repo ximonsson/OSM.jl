@@ -3,9 +3,49 @@
 #include <assert.h>
 #include <GL/gl.h>
 #include <GL/glext.h>
+#include "nodes.c"
+#include "ways.c"
 
 static SDL_Window* win;
 static SDL_GLContext ctx;
+
+static void check_errors()
+{
+	GLenum e = glGetError ();
+	if (e != GL_NO_ERROR)
+	{
+		switch (e)
+		{
+			case GL_NO_ERROR:
+				fprintf (stderr, "GL_NO_ERROR\n");
+				break;
+
+			case GL_INVALID_ENUM:
+				fprintf (stderr, "GL_INVALID_ENUM\n");
+				break;
+
+			case GL_INVALID_VALUE:
+				fprintf (stderr, "GL_INVALID_VALUE\n");
+				break;
+
+			case GL_INVALID_OPERATION:
+				fprintf (stderr, "GL_INVALID_OPERATION\n");
+				break;
+
+			case GL_STACK_OVERFLOW:
+				fprintf (stderr, "GL_STACK_OVERFLOW\n");
+				break;
+
+			case GL_STACK_UNDERFLOW:
+				fprintf (stderr, "GL_STACK_UNDERFLOW\n");
+				break;
+
+			case GL_OUT_OF_MEMORY:
+				fprintf (stderr, "GL_OUT_OF_MEMORY\n");
+				break;
+		}
+	}
+}
 
 static int compile_shader (const char* filepath, GLuint* shader, GLuint shadertype)
 {
@@ -62,11 +102,17 @@ static int compile_shaders ()
 
 	res = compile_shader ("vertex.glsl", &vertexshader, GL_VERTEX_SHADER);
 	if (res != 0)
+	{
+		fprintf (stderr, "error compiling vertex shader: %d\n", res);
 		return res;
+	}
 
 	res = compile_shader ("fragment.glsl", &fragmentshader, GL_FRAGMENT_SHADER);
 	if (res != 0)
+	{
+		fprintf (stderr, "error compiling fragment shader: %d\n", res);
 		return res;
+	}
 
 	// create the shader program and attach the shaders
 	program = glCreateProgram ();
@@ -117,19 +163,17 @@ static GLuint vbo_nodes;
 static GLuint vbo_tex;
 static GLuint color;
 static GLuint vx;
+static GLuint vxo;
+static GLuint vxd;
 
-static GLfloat nodes[9 * 3] =
-{
-	-.25, -.25, 0.,
-	0, 0, 0,
-	.1, .5, 0,
-	-.5, -.5, 0.,
-	1., 0, 0,
-	.1, .5, 0,
-	-.25, .5, 0.,
-	0, -1, 0,
-	-1, .5, 0
-};
+#define W 1000
+#define H 1000
+#define NWAYS 28663
+#define NNODES 167123
+#define OX -40.497
+#define OY -20.516
+#define ViewW .5
+#define ViewH .5
 
 int init_gl (int w, int h)
 {
@@ -145,12 +189,11 @@ int init_gl (int w, int h)
 
 	vx = glGetAttribLocation (program, "vertex");
 	color = glGetAttribLocation (program, "color_in");
+	vxo = glGetAttribLocation (program, "o");
+	vxd = glGetAttribLocation (program, "d");
 
 	return 0;
 }
-
-#define W 800
-#define H 600
 
 static void init ()
 {
@@ -158,36 +201,43 @@ static void init ()
 	assert (init_gl (W, H) == 0);
 }
 
-void load_nodes (float* nodes_, size_t n)
+void load_nodes (GLfloat* nodes_, size_t n)
 {
-	memcpy(nodes, nodes_, n * sizeof(float));
+	//memcpy(nodes, nodes_, n * sizeof(float));
+	glBindBuffer (GL_ARRAY_BUFFER, vbo_nodes);
+	glBufferData (GL_ARRAY_BUFFER, n * 2 * sizeof (GLfloat), nodes_, GL_STATIC_DRAW);
 }
+
+static GLfloat origx = OX;
+static GLfloat origy = OY;
+static GLfloat view_width = ViewW;
+static GLfloat view_height = ViewH;
 
 static void draw ()
 {
 	glClear (GL_COLOR_BUFFER_BIT);
 
-	glEnableVertexAttribArray (vx);
-
 	glBindBuffer (GL_ARRAY_BUFFER, vbo_nodes);
-	glBufferData (GL_ARRAY_BUFFER, 9 * 3 * sizeof (GLfloat), nodes, GL_STATIC_DRAW);
+	glEnableVertexAttribArray (vx);
+	glVertexAttribPointer (vx, 2, GL_FLOAT, 0, 0, 0);
 
-	glVertexAttribPointer (vx, 3, GL_FLOAT, 0, 0, 0);
+	glVertexAttrib2f (vxo, origx, origy);
+	glVertexAttrib2f (vxd, view_width, view_height);
 
-	// draw passages
 	glVertexAttrib4f (color, 1.0, 1.0, 1.0, 1.0);
 	glLineWidth (1.);
-	glDrawArrays (GL_LINE_STRIP, 0, 3);
 
-	// draw streets
-	glVertexAttrib4f (color, .6, .6, .6, 1.0);
-	glLineWidth (5.);
-	glDrawArrays (GL_LINE_STRIP, 3, 3);
+	int *wi = way_idx;
+	int *wc = way_counts;
 
-	// draw highways
-	glVertexAttrib4f (color, .2, .2, .2, 1.0);
-	glLineWidth (10.);
-	glDrawArrays (GL_LINE_STRIP, 6, 3);
+	int nn = 1000;
+	int i = 0;
+	for (; i < (NWAYS / nn); i ++)
+		glMultiDrawArrays (GL_LINE_STRIP, wi + i * nn, wc + i * nn, nn);
+	glMultiDrawArrays (GL_LINE_STRIP, wi + i * nn, wc + i * nn, NWAYS % nn);
+
+	//for (int i = 0; i < NWAYS; i ++)
+		//glDrawArrays (GL_LINE_STRIP, wi[i], wc[i]);
 
 	glDisableVertexAttribArray (vx);
 
@@ -196,20 +246,58 @@ static void draw ()
 
 void handle_events (int* done)
 {
+	float delta = 0.01;
 	static SDL_Event ev;
 	while (SDL_PollEvent (&ev))
 	{
 		if (ev.type == SDL_QUIT)
 			*done = 1;
-		if (ev.type == SDL_KEYUP && ev.key.keysym.sym == SDLK_q)
+		else if (ev.type == SDL_KEYUP && ev.key.keysym.sym == SDLK_q)
 			*done = 1;
+
+		if (ev.type == SDL_KEYDOWN)
+		{
+			switch (ev.key.keysym.sym)
+			{
+				case SDLK_w:
+					origy += delta;
+					break;
+
+				case SDLK_s:
+					origy -= delta;
+					break;
+
+				case SDLK_a:
+					origx -= delta;
+					break;
+
+				case SDLK_d:
+					origx += delta;
+					break;
+
+				case SDLK_j:
+					view_width -= delta;
+					view_height -= delta;
+					origx += delta / 2.;
+					origy += delta / 2.;
+					break;
+
+				case SDLK_k:
+					view_width += delta;
+					view_height += delta;
+					origx -= delta / 2.;
+					origy -= delta / 2.;
+					break;
+			}
+		}
 	}
 }
 
 int main ()
 {
-	int w = 800, h = 600;
+	int w = W, h = H;
 	init ();
+	load_nodes (vitoria_nodes, NNODES);
 	draw ();
 
 	int done = 0;
@@ -218,4 +306,6 @@ int main ()
 		draw ();
 		handle_events (&done);
 	}
+
+	destroy_win ();
 }
