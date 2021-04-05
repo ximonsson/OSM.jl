@@ -43,6 +43,10 @@ static void check_errors()
 	}
 }
 
+/**
+ * Compile the shader at `filepath` as `shadertype`.
+ * The resulting shader can be referenced `*shader`.
+ */
 static int compile_shader (const char* filepath, GLuint* shader, GLuint shadertype)
 {
 	size_t result, file_size;
@@ -90,8 +94,14 @@ static int compile_shader (const char* filepath, GLuint* shader, GLuint shaderty
 	return 0;
 }
 
+/**
+ * Shader programs.
+ */
 static GLuint vertexshader, fragmentshader, program;
 
+/**
+ * Compile all the shaders and link to a program.
+ */
 static int compile_shaders ()
 {
 	int res;
@@ -130,13 +140,12 @@ static GLuint vxd;
 
 #define N_WAYS_DRAW 1024
 
-int map_init (int w, int h)
+static GLsizei w, h;
+
+int map_init (int w_, int h_)
 {
 	if (compile_shaders () != 0)
 		return 1;
-
-	glClearColor (.1f, .1f, .1f, 1.f);
-	glViewport (0, 0, w, h);
 
 	// generate vertex buffer for vertices and texture coords
 	glGenBuffers (1, &vbo_nodes);
@@ -146,6 +155,9 @@ int map_init (int w, int h)
 	color = glGetAttribLocation (program, "color_in");
 	vxo = glGetAttribLocation (program, "o");
 	vxd = glGetAttribLocation (program, "d");
+
+	// viewport
+	w = w_, h = h_;
 
 	return 0;
 }
@@ -200,7 +212,10 @@ static void draw_highways (GLint* way_idx, GLsizei* way_size, GLsizei n)
 
 void map_draw (float origx, float origy, float view_width, float view_height)
 {
+	glUseProgram (program);
+	glClearColor (.1f, .1f, .1f, 1.f);
 	glClear (GL_COLOR_BUFFER_BIT);
+	glViewport (0, 0, w, h);
 
 	glBindBuffer (GL_ARRAY_BUFFER, vbo_nodes);
 	glEnableVertexAttribArray (vx);
