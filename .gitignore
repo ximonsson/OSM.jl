@@ -1,1 +1,5 @@
 map
+bin/
+build/
+lib/
+data/
