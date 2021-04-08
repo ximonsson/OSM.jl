@@ -84,13 +84,22 @@ waynodes(D::Data, w::Way)::Vector{Node} = [D.nodes[ref] for ref in w.nodes]
 
 Extract all highways from the data.
 """
-highways(D::Data)::Vector{Way} = filter(w -> haskey(w.tags, :highway), D.ways)
+highways(D::Data)::Vector{Way} = filter(ishighway, D.ways)
 
 """
 	highways(fn::Function, D::Data)::Vector{Way}
+
+Extract all highways filtered on predicative `fn` from data `D`.
 """
 highways(fn::Function, D::Data)::Vector{Way} =
-	filter(w -> haskey(w.tags, :highway) && fn(w), D.ways)
+	filter(w -> ishighway(w) && fn(w), D.ways)
+
+"""
+	buildings(D::Data)
+
+Extract all the buildings from `D`.
+"""
+buildings(D::Data)::Vector{Way} = filter(isbuilding, D.ways)
 
 """
 	extract(ns::Vector{Node}, P::Polygon)

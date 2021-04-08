@@ -16,8 +16,16 @@ end
 
 """
 Basic element in OSM data. Can be either a Node, Way or Relation.
+They all contain a `tag` field for checking associated tags.
 """
 abstract type Element end
+
+"""
+	hastag(e::Element, t::Symbol)
+
+Is the element tagged with a certain tag?
+"""
+hastag(e::Element, t::Symbol) = haskey(e.tags, t)
 
 """
 	name(::Element)::Union{String,Missing}
@@ -164,6 +172,20 @@ end
 Add node reference `n` to `w`.
 """
 addnode(w::Way, n::Int64) = push!(w.nodes, n)
+
+"""
+	ishighway(w::Way)
+
+Does the Way element `w` represent a highway (street) of any kind?
+"""
+ishighway(w::Way)::Bool = hastag(w, :highway)
+
+"""
+	isbuilding(w::Way)
+
+Does the Way element `w` represent a building?
+"""
+isbuilding(w::Way)::Bool = hastag(w, :building)
 
 """
 	ways(el::EzXML.Node)
