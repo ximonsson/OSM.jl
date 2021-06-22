@@ -91,8 +91,7 @@ highways(D::Data)::Vector{Way} = filter(ishighway, D.ways)
 
 Extract all highways filtered on predicative `fn` from data `D`.
 """
-highways(fn::Function, D::Data)::Vector{Way} =
-	filter(w -> ishighway(w) && fn(w), D.ways)
+highways(fn::Function, D::Data)::Vector{Way} = filter(w -> ishighway(w) && fn(w), D.ways)
 
 """
 	buildings(D::Data)
@@ -189,7 +188,7 @@ function parsefile(fp::AbstractString)
 			# safe to assume it is a way?
 			addnode(el, parse(Int64, attr["ref"]))
 		elseif name == "tag" && !isnothing(el)
-			tag(el, attr["k"], attr["v"])
+			tag!(el, attr["k"], attr["v"])
 		end
 	end
 

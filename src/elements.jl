@@ -35,18 +35,18 @@ Return the name of the Way. If there is no name for the way `missing` is returne
 name(e::Element)::Union{String,Missing} = get(e.tags, :name, missing)
 
 """
-	tag(e::Element, t::Tag)
+	tag!(e::Element, t::Tag)
 
 Add tag `t` to the `Element` struct.
 """
-function tag(e::Element, t::Tag)
+function tag!(e::Element, t::Tag)
 	e.tags[t.first] = t.second
 end
 
 """
-	tag(e::Element, k::AbstractString, v::AbstractString)
+	tag!(e::Element, k::AbstractString, v::AbstractString)
 """
-function tag(e::Element, k::AbstractString, v::AbstractString)
+function tag!(e::Element, k::AbstractString, v::AbstractString)
 	e.tags[Symbol(replace(k, ":" => "_"))] = v
 end
 
