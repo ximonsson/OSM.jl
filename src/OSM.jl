@@ -127,12 +127,21 @@ Search data `D` based on address.
 TODO this only returns Way elements that classify as building at the moment.
 """
 function search_address(D::Data, street::AbstractString, n::AbstractString, postcode::AbstractString = "", city::AbstractString = "")
+	# TODO
+	# handle city and postcode
+
+	# buildings
 	Bs = buildings(D)
-
 	streets = addr_street.(Bs)
-	street_ns = addr_housenumber.(Bs)
+	houses = addr_housenumber.(Bs)
+	Bs = Bs[.!ismissing.(streets) .& .!ismissing.(houses) .& (streets .== street) .& (houses .== n)]
 
-	Bs[.!ismissing.(streets) .& .!ismissing.(street_ns) .& (streets .== street) .& (street_ns .== n)]
+	# nodes
+	streets = addr_street.(D.nodes |> values)
+	houses = addr_housenumber.(D.nodes |> values)
+	Ns = collect(values(D.nodes))[.!ismissing.(streets) .& .!ismissing.(houses) .& (streets .== street) .& (houses .== n)]
+
+	Bs, Ns
 end
 
 function path(D::Data, e1::Element, e2::Element)
