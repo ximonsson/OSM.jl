@@ -101,6 +101,19 @@ Extract all the buildings from `D`.
 buildings(D::Data)::Vector{Way} = filter(isbuilding, D.ways)
 
 """
+	search(::Data, ::AbstractString)
+
+Search the data for Nodes and Ways that have the given name.
+"""
+function search(D::Data, n::AbstractString)
+	nnames = D.nodes |> values .|> name
+	wnames = D.ways .|> name
+
+	return collect(values(D.nodes))[.!ismissing.(nnames) .& (nnames .== n)],
+		D.ways[.!ismissing.(wnames) .& (wnames .== n)]
+end
+
+"""
 	extract(ns::Vector{Node}, P::Polygon)
 """
 function extract(ns::Vector{Node}, P::Polygon)
