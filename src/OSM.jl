@@ -114,6 +114,32 @@ function search(D::Data, n::AbstractString)
 end
 
 """
+	search_address(
+		D::Data,
+		street_name::AbstractString,
+		housenumber::AbstractString,
+		postcode::AbstractString = "",
+		city::AbstractString = ""
+	)
+
+Search data `D` based on address.
+
+TODO this only returns Way elements that classify as building at the moment.
+"""
+function search_address(D::Data, street::AbstractString, n::AbstractString, postcode::AbstractString = "", city::AbstractString = "")
+	Bs = buildings(D)
+
+	streets = addr_street.(Bs)
+	street_ns = addr_housenumber.(Bs)
+
+	Bs[.!ismissing.(streets) .& .!ismissing.(street_ns) .& (streets .== street) .& (street_ns .== n)]
+end
+
+function path(D::Data, e1::Element, e2::Element)
+
+end
+
+"""
 	extract(ns::Vector{Node}, P::Polygon)
 """
 function extract(ns::Vector{Node}, P::Polygon)
