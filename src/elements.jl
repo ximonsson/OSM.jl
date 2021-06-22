@@ -34,6 +34,14 @@ Return the name of the Way. If there is no name for the way `missing` is returne
 """
 name(e::Element)::Union{String,Missing} = get(e.tags, :name, missing)
 
+addr_street(e::Element) = get(e.tags, :addr_street, missing)
+
+addr_housenumber(e::Element) = get(e.tags, :addr_housenumber, missing)
+
+addr_postcode(e::Element) = get(e.tags, :addr_postcode, missing)
+
+addr_city(e::Element) = get(e.tags, :addr_city, missing)
+
 """
 	tag!(e::Element, t::Tag)
 
