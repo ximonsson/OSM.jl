@@ -123,8 +123,6 @@ end
 	)
 
 Search data `D` based on address.
-
-TODO this only returns Way elements that classify as building at the moment.
 """
 function search_address(D::Data, street::AbstractString, n::AbstractString, postcode::AbstractString = "", city::AbstractString = "")
 	# TODO
