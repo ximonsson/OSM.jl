@@ -261,4 +261,16 @@ feature plays within a relation.
 """
 struct Relation <: Element
 	# TODO
+	ID::Int64
+	tags::Tags
 end
+
+"""
+	Relation(::Dict{AbstractString,AbstractString})
+
+Create a Node from XML node attributes
+"""
+function Relation(attr::Dict{AbstractString,AbstractString})
+	Relation(parse(Int64, attr["id"]), Tags())
+end
+

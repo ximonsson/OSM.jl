@@ -228,8 +228,8 @@ function parsefile(fp::AbstractString)
 			el = OSM.Way(attr)
 			push!(ways, el)
 		elseif name == "relation"
-			# TODO
-			el = nothing
+			el = Relation(attr)
+			push!(relations, el)
 		elseif name == "nd"
 			# safe to assume it is a way?
 			addnode(el, parse(Int64, attr["ref"]))
