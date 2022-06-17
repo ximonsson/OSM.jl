@@ -193,6 +193,13 @@ Does the Way element `w` represent a building?
 isbuilding(w::Way)::Bool = hastag(w, :building)
 
 """
+    isaddress(n::Node)::Bool
+
+Does the node `n` represent an address?
+"""
+isaddress(n::Node)::Bool = hastag(n, :addr_street)
+
+"""
 	ways(el::EzXML.Node)
 
 Return all Way elements under the given XML element.

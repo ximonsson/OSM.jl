@@ -138,12 +138,40 @@ function search_address(D::Data, street::AbstractString, n::AbstractString, post
 	#
 	# TODO this is slow
 
-	streets = addr_street.(D.nodes |> values)
-	houses = addr_housenumber.(D.nodes |> values)
+	v = D.nodes |> values
+	streets = v .|> addr_street
+	houses = v .|> addr_housenumber
 	Ns = collect(values(D.nodes))[.!ismissing.(streets) .& .!ismissing.(houses) .& (streets .== street) .& (houses .== n)]
 
 	Bs, Ns
 end
+
+function search_address_v2(D::Data, street::AbstractString, n::AbstractString, postcode::AbstractString = "", city::AbstractString = "")
+	# buildings
+	Bs = buildings(D)
+	streets = addr_street.(Bs)
+	houses = addr_housenumber.(Bs)
+	Bs = Bs[.!ismissing.(streets) .& .!ismissing.(houses) .& (streets .== street) .& (houses .== n)]
+
+	# nodes
+	#
+	# TODO this is slow
+
+	#v = D.nodes |> values
+	#streets = v .|> addr_street
+	#houses = v .|> addr_housenumber
+	#Ns = collect(values(D.nodes))[.!ismissing.(streets) .& .!ismissing.(houses) .& (streets .== street) .& (houses .== n)]
+
+	# filter out nodes that represent addresses
+	as = filter(isaddress, D.nodes |> values |> collect)
+	Ns = filter!(as) do a
+		(addr_street(a) == street) && (addr_housenumber(a) == n)
+	end
+
+	Bs, Ns
+
+end
+
 
 function path(D::Data, e1::Element, e2::Element)
 
