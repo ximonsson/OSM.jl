@@ -47,16 +47,13 @@ addr_city(e::Element) = get(e.tags, :addr_city, missing)
 
 Add tag `t` to the `Element` struct.
 """
-function tag!(e::Element, t::Tag)
-	e.tags[t.first] = t.second
-end
+tag!(e::Element, t::Tag) = setindex!(e.tags, t.second, t.first)
 
 """
 	tag!(e::Element, k::AbstractString, v::AbstractString)
 """
-function tag!(e::Element, k::AbstractString, v::AbstractString)
-	e.tags[Symbol(replace(k, ":" => "_"))] = v
-end
+tag!(e::Element, k::AbstractString, v::AbstractString) =
+	tag!(e, Symbol(replace(k, ":" => "_")) => v)
 
 """
 OSM Node; for more information about nodes read https://wiki.openstreetmap.org/wiki/Node.

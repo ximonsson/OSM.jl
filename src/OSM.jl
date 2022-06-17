@@ -135,6 +135,9 @@ function search_address(D::Data, street::AbstractString, n::AbstractString, post
 	Bs = Bs[.!ismissing.(streets) .& .!ismissing.(houses) .& (streets .== street) .& (houses .== n)]
 
 	# nodes
+	#
+	# TODO this is slow
+
 	streets = addr_street.(D.nodes |> values)
 	houses = addr_housenumber.(D.nodes |> values)
 	Ns = collect(values(D.nodes))[.!ismissing.(streets) .& .!ismissing.(houses) .& (streets .== street) .& (houses .== n)]
