@@ -153,7 +153,7 @@ function Way(el::EzXML.Node)
 	)
 	Way(
 		parse(Int64, el["id"]),
-		true,#get(el, "visible", false),
+		true, #get(el, "visible", false),
 		n,
 		el |> Tags,
 	)
@@ -176,7 +176,7 @@ end
 
 Add node reference `n` to `w`.
 """
-addnode(w::Way, n::Int64) = push!(w.nodes, n)
+addnode!(w::Way, n::Int64) = push!(w.nodes, n)
 
 """
 	ishighway(w::Way)
@@ -193,7 +193,7 @@ Does the Way element `w` represent a building?
 isbuilding(w::Way)::Bool = hastag(w, :building)
 
 """
-    isaddress(n::Node)::Bool
+	isaddress(n::Node)::Bool
 
 Does the node `n` represent an address?
 """
