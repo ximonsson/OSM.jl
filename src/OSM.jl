@@ -235,7 +235,7 @@ function parsefile(fp::AbstractString)
 			push!(relations, el)
 		elseif name == "nd"
 			# safe to assume it is a way?
-			addnode(el, parse(Int64, attr["ref"]))
+			addnode!(el, parse(Int64, attr["ref"]))
 		elseif name == "tag" && !isnothing(el)
 			tag!(el, attr["k"], attr["v"])
 		end
