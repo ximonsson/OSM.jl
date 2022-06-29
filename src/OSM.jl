@@ -65,11 +65,6 @@ end
 Filter `Element`s on function `fn`.
 
 This is really just a threaded version of `filter`.
-
-but it is a bit more forgiving in
-the way that the function can return `Missing` and it will treat it as `false` because
-it is used a lot on filtering on attributes that might not exist and then we are not
-interested in the element.
 """
 function filternodes(fn::Function, ns::AbstractVector{<:Element})
 	idx = Vector{Bool}(undef, length(ns))
