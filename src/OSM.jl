@@ -60,16 +60,23 @@ function Base.show(io::IO, D::Data)
 end
 
 """
-	filternodes(::Function, ::Vector{Node})
+	filternodes(::Function, ::AbstractVector{<:Element})
 
-Filter nodes on function `fn`.
+Filter `Element`s on function `fn`.
+
+This is really just a threaded version of `filter`.
+
+but it is a bit more forgiving in
+the way that the function can return `Missing` and it will treat it as `false` because
+it is used a lot on filtering on attributes that might not exist and then we are not
+interested in the element.
 """
-function filternodes(fn::Function, ns::Vector{Node})
+function filternodes(fn::Function, ns::AbstractVector{<:Element})
 	idx = Vector{Bool}(undef, length(ns))
-	@Threads.threads for i in 1:length(ns)
+	@inbounds @Threads.threads for i in 1:length(ns)
 		idx[i] = fn(ns[i])
 	end
-	ns[idx]
+	@inbounds ns[idx]
 end
 
 """
@@ -84,21 +91,21 @@ waynodes(D::Data, w::Way)::Vector{Node} = [D.nodes[ref] for ref in w.nodes]
 
 Extract all highways from the data.
 """
-highways(D::Data)::Vector{Way} = filter(ishighway, D.ways)
+highways(D::Data)::Vector{Way} = filternodes(ishighway, D.ways)
 
 """
 	highways(fn::Function, D::Data)::Vector{Way}
 
 Extract all highways filtered on predicative `fn` from data `D`.
 """
-highways(fn::Function, D::Data)::Vector{Way} = filter(w -> ishighway(w) && fn(w), D.ways)
+highways(fn::Function, D::Data)::Vector{Way} = filternodes(w -> ishighway(w) && fn(w), D.ways)
 
 """
 	buildings(D::Data)
 
 Extract all the buildings from `D`.
 """
-buildings(D::Data)::Vector{Way} = filter(isbuilding, D.ways)
+buildings(D::Data)::Vector{Way} = filternodes(isbuilding, D.ways)
 
 """
 	search(::Data, ::AbstractString)
@@ -126,23 +133,17 @@ Search data `D` based on address.
 """
 function search_address(D::Data, street::AbstractString, n::AbstractString, postcode::AbstractString = "", city::AbstractString = "")
 	# ways
-
-	Bs = buildings(D)
-	streets = addr_street.(Bs)
-	houses = addr_housenumber.(Bs)
-	Bs = Bs[.!ismissing.(streets) .& .!ismissing.(houses) .& (streets .== street) .& (houses .== n)]
-
-	# nodes
-
-	as = filter(isaddress, D.nodes |> values |> collect)
-	Ns = filter!(as) do a
-		(addr_street(a) == street) && (addr_housenumber(a) == n)
+	ws = filternodes(D.ways) do w
+		coalesce(isaddress(w) && (addr_street(w) == street) && (addr_housenumber(w) == n), false)
 	end
 
-	Bs, Ns
+	# nodes
+	ns = filternodes(D.nodes |> values |> collect) do node
+		coalesce(isaddress(node) && (addr_street(node) == street) && (addr_housenumber(node) == n), false)
+	end
 
+	(ws, ns)
 end
-
 
 function path(D::Data, e1::Element, e2::Element)
 
@@ -154,7 +155,7 @@ end
 function extract(ns::Vector{Node}, P::Polygon)
 	idx = Vector{Bool}(undef, length(ns))
 
-	@Threads.threads for i in 1:length(ns)
+	@inbounds @Threads.threads for i in 1:length(ns)
 		idx[i] = ns[i] ∈ P
 	end
 
@@ -173,7 +174,7 @@ function extract(D::Data, P::Polygon)
 	nids = map(n -> n.ID, ns)
 
 	ws = Vector{Bool}(undef, length(D.ways))
-	@Threads.threads for i in 1:length(ws)
+	@inbounds @Threads.threads for i in 1:length(ws)
 		ws[i] = any(D.ways[i].nodes .∈ (nids,))
 	end
 

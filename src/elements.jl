@@ -43,6 +43,13 @@ addr_postcode(e::Element) = get(e.tags, :addr_postcode, missing)
 addr_city(e::Element) = get(e.tags, :addr_city, missing)
 
 """
+	isaddress(e::Element)::Bool
+
+Does the node `e` represent an address?
+"""
+isaddress(e::Element)::Bool = hastag(e, :addr_street)
+
+"""
 	tag!(e::Element, t::Tag)
 
 Add tag `t` to the `Element` struct.
@@ -193,13 +200,6 @@ Does the Way element `w` represent a building?
 isbuilding(w::Way)::Bool = hastag(w, :building)
 
 """
-    isaddress(n::Node)::Bool
-
-Does the node `n` represent an address?
-"""
-isaddress(n::Node)::Bool = hastag(n, :addr_street)
-
-"""
 	ways(el::EzXML.Node)
 
 Return all Way elements under the given XML element.
@@ -277,4 +277,3 @@ Create a Node from XML node attributes
 function Relation(attr::Dict{AbstractString,AbstractString})
 	Relation(parse(Int64, attr["id"]), Tags())
 end
-
