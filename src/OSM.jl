@@ -3,7 +3,7 @@ module OSM
 include("Nominatim.jl")
 include("Overpass.jl")
 
-using LibExpat, EzXML
+using LibExpat, EzXML, Printf
 
 include("elements.jl")
 include("coords.jl")
@@ -50,12 +50,54 @@ body of an HTTP response.
 """
 Data(io::IOStream) = io |> read |> String |> Data
 
+"""
+	parsefile(fp::AbstractString)
+
+Parse an XML file and return an OSM.Data object.
+"""
+function parsefile(fp::AbstractString)
+	nodes = sizehint!(Vector{Node}(), 1e6 |> Int)
+	ways = sizehint!(Vector{Way}(), 1e5 |> Int)
+	relations = sizehint!(Vector{Relation}(), 1e5 |> Int)
+
+	el = nothing  # current element
+
+	function create(_, name, attr)
+		if name == "node"
+			el = OSM.Node(attr)
+			push!(nodes, el)
+		elseif name == "way"
+			el = OSM.Way(attr)
+			push!(ways, el)
+		elseif name == "relation"
+			el = Relation(attr)
+			push!(relations, el)
+		elseif name == "nd"
+			# safe to assume it is a way?
+			addnode!(el, parse(Int64, attr["ref"]))
+		elseif name == "tag" && !isnothing(el)
+			tag!(el, attr["k"], attr["v"])
+		end
+	end
+
+	cb = LibExpat.XPCallbacks()
+	cb.start_element = create
+	LibExpat.parsefile(fp, cb)
+
+	Data(nodes, ways, relations)
+end
+
 function Base.show(io::IO, D::Data)
+	nnod = length(D.nodes)
+	nway = length(D.ways)
+	nrel = length(D.relations)
+	#pad = (max(nnod, nway, nrel) |> log10) + 1
 	print(
 		io,
 		"""OSM.Data:
-			$(length(D.nodes)) nodes
-			$(length(D.ways)) ways""",
+			$(@sprintf "%-8d" nnod) nodes
+			$(@sprintf "%-8d" nway) ways
+			$(@sprintf "%-8d" nrel) relations""",
 	)
 end
 
@@ -204,43 +246,6 @@ Extract data from `D` that is linked to the way elements in `ws`.
 function extract(D::Data, ws::Vector{Way})
 	ns = reduce(vcat, map(w -> waynodes(D, w), ws))
 	Data(ns, ws, D.relations)
-end
-
-"""
-	parsefile(fp::AbstractString)
-
-Parse an XML file and return an OSM.Data object.
-"""
-function parsefile(fp::AbstractString)
-	nodes = sizehint!(Vector{Node}(), 1e6 |> Int)
-	ways = sizehint!(Vector{Way}(), 1e5 |> Int)
-	relations = Vector{Relation}()
-
-	el = nothing  # current element
-
-	function create(_, name, attr)
-		if name == "node"
-			el = OSM.Node(attr)
-			push!(nodes, el)
-		elseif name == "way"
-			el = OSM.Way(attr)
-			push!(ways, el)
-		elseif name == "relation"
-			el = Relation(attr)
-			push!(relations, el)
-		elseif name == "nd"
-			# safe to assume it is a way?
-			addnode!(el, parse(Int64, attr["ref"]))
-		elseif name == "tag" && !isnothing(el)
-			tag!(el, attr["k"], attr["v"])
-		end
-	end
-
-	cb = LibExpat.XPCallbacks()
-	cb.start_element = create
-	LibExpat.parsefile(fp, cb)
-
-	Data(nodes, ways, relations)
 end
 
 end
