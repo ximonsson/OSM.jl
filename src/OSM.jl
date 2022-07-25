@@ -75,6 +75,9 @@ function parsefile(fp::AbstractString)
 		elseif name == "nd"
 			# safe to assume it is a way?
 			addnode!(el, parse(Int64, attr["ref"]))
+		elseif name == "member"
+			# safe to assume it is a relation?
+			addmember!(el, attr)
 		elseif name == "tag" && !isnothing(el)
 			tag!(el, attr["k"], attr["v"])
 		end

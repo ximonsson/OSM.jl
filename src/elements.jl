@@ -6,6 +6,12 @@ An element tag.
 const Tag = Pair{String,String}
 const Tags = Dict{String,String}
 
+function Base.show(io::IO, tags::Tags)
+	for t in tags
+		print(io, "\n$t")
+	end
+end
+
 Tag(el::EzXML.Node) = el["k"] => el["v"]
 
 function Tags(el::EzXML.Node)
@@ -272,6 +278,20 @@ function is_road(w::Way)::Bool
 	!is_area(w)
 end
 
+struct RelationMember
+	ref::Int64
+	type::String
+	role::String
+end
+
+function RelationMember(attr::Dict{<:AbstractString,<:AbstractString})
+	RelationMember(
+		parse(Int64, attr["ref"]),
+		attr["type"],
+		attr["role"],
+	)
+end
+
 """
 	Relation(el::EzXML.Node)
 
@@ -286,8 +306,8 @@ feature plays within a relation.
 ```
 """
 struct Relation <: Element
-	# TODO
 	ID::Int64
+	members::Vector{RelationMember}
 	tags::Tags
 end
 
@@ -296,6 +316,23 @@ end
 
 Create a Node from XML node attributes
 """
-function Relation(attr::Dict{AbstractString,AbstractString})
-	Relation(parse(Int64, attr["id"]), Tags())
+function Relation(attr::Dict{<:AbstractString,<:AbstractString})
+	Relation(parse(Int64, attr["id"]), RelationMember[], Tags())
 end
+
+function Base.show(io::IO, r::Relation)
+	n = r |> name
+	print(
+		io,
+		"""$(r |> typeof): $(r.ID) $(n |> ismissing ? "" : "\"$n\"")
+		$(length(r.members)) members"""
+	)
+	print(io, r.tags)
+end
+
+function addmember!(r::Relation, mem::Dict{<:AbstractString,<:AbstractString})
+	push!(r.members, RelationMember(mem))
+	return r
+end
+
+type(r::Relation)::Union{String,Missing} = r.tags["type"]
