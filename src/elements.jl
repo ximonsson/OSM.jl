@@ -3,12 +3,10 @@
 
 An element tag.
 """
-const Tag = Pair{Symbol,String}
-const Tags = Dict{Symbol,String}
+const Tag = Pair{String,String}
+const Tags = Dict{String,String}
 
-function Tag(el::EzXML.Node)
-	Symbol(replace(el["k"], ":" => "_")) => el["v"]
-end
+Tag(el::EzXML.Node) = el["k"] => el["v"]
 
 function Tags(el::EzXML.Node)
 	map(Tag, filter(e -> e.name == "tag", elements(el))) |> Dict
@@ -25,22 +23,22 @@ abstract type Element end
 
 Is the element tagged with a certain tag?
 """
-hastag(e::Element, t::Symbol) = haskey(e.tags, t)
+hastag(e::Element, t::String) = haskey(e.tags, t)
 
 """
 	name(::Element)::Union{String,Missing}
 
 Return the name of the Way. If there is no name for the way `missing` is returned.
 """
-name(e::Element)::Union{String,Missing} = get(e.tags, :name, missing)
+name(e::Element)::Union{String,Missing} = get(e.tags, "name", missing)
 
-addr_street(e::Element) = get(e.tags, :addr_street, missing)
+addr_street(e::Element) = get(e.tags, "addr_street", missing)
 
-addr_housenumber(e::Element) = get(e.tags, :addr_housenumber, missing)
+addr_housenumber(e::Element) = get(e.tags, "addr_housenumber", missing)
 
-addr_postcode(e::Element) = get(e.tags, :addr_postcode, missing)
+addr_postcode(e::Element) = get(e.tags, "addr_postcode", missing)
 
-addr_city(e::Element) = get(e.tags, :addr_city, missing)
+addr_city(e::Element) = get(e.tags, "addr_city", missing)
 
 """
 	isaddress(e::Element)::Bool
@@ -60,7 +58,7 @@ tag!(e::Element, t::Tag) = setindex!(e.tags, t.second, t.first)
 	tag!(e::Element, k::AbstractString, v::AbstractString)
 """
 tag!(e::Element, k::AbstractString, v::AbstractString) =
-	tag!(e, Symbol(replace(k, ":" => "_")) => v)
+	tag!(e, k => v)
 
 """
 OSM Node; for more information about nodes read https://wiki.openstreetmap.org/wiki/Node.
@@ -98,6 +96,18 @@ function Node(attr::Dict{AbstractString,AbstractString})
 		parse(Float64, attr["lat"]),
 		Tags(),
 	)
+end
+
+function Base.show(io::IO, n::Node)
+	nam = n |> name
+	print(
+		io,
+		"""OSM.Node: $(n.ID) $(nam |> ismissing ? "" : "\"$nam\"")
+		λ => $(n.λ), ϕ => $(n.ϕ)""",
+	)
+	for t in n.tags
+		print(io, "\n$t")
+	end
 end
 
 """
@@ -172,10 +182,22 @@ end
 function Way(attr::Dict{AbstractString,AbstractString})
 	Way(
 		parse(Int64, attr["id"]),
-		get(attr, "visible", false),
+		get(attr, "visible", "false") === "true",
 		Vector{Int64}(),
 		Tags(),
 	)
+end
+
+function Base.show(io::IO, w::Way)
+	n = w |> name
+	print(
+		io,
+		"""OSM.Way: $(w.ID) $(n |> ismissing ? "" : "\"$n\"")
+		$(length(w.nodes)) nodes"""
+	)
+	for t in w.tags
+		print(io, "\n$t")
+	end
 end
 
 """

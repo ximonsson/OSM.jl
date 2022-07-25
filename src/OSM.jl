@@ -91,13 +91,12 @@ function Base.show(io::IO, D::Data)
 	nnod = length(D.nodes)
 	nway = length(D.ways)
 	nrel = length(D.relations)
-	#pad = (max(nnod, nway, nrel) |> log10) + 1
 	print(
 		io,
 		"""OSM.Data:
-			$(@sprintf "%-8d" nnod) nodes
-			$(@sprintf "%-8d" nway) ways
-			$(@sprintf "%-8d" nrel) relations""",
+			nodes      $nnod
+			ways       $nway
+			relations  $nrel""",
 	)
 end
 
