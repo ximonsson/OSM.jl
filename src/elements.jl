@@ -324,7 +324,7 @@ function Base.show(io::IO, r::Relation)
 	n = r |> name
 	print(
 		io,
-		"""$(r |> typeof): $(r.ID) $(n |> ismissing ? "" : "\"$n\"")
+		"""$(r |> typeof): [$(type(r))] $(r.ID) $(n |> ismissing ? "" : "\"$n\"")
 		$(length(r.members)) members"""
 	)
 	print(io, r.tags)
@@ -335,4 +335,4 @@ function addmember!(r::Relation, mem::Dict{<:AbstractString,<:AbstractString})
 	return r
 end
 
-type(r::Relation)::Union{String,Missing} = r.tags["type"]
+type(r::Relation)::Union{String,Missing} = get(r.tags, "type", "unknown type")
