@@ -8,7 +8,7 @@ const Tags = Dict{String,String}
 
 function Base.show(io::IO, tags::Tags)
 	for t in tags
-		print(io, "\n$t")
+		print(io, "\n - $t")
 	end
 end
 
@@ -93,12 +93,9 @@ function Base.show(io::IO, n::Node)
 	nam = @name n
 	print(
 		io,
-		"""OSM.Node: $(n.ID) $(nam |> ismissing ? "" : "\"$nam\"")
-		λ => $(n.λ), ϕ => $(n.ϕ)""",
+		"""$(n |> typeof): $(n.ID) $(nam |> ismissing ? "" : "\"$nam\"") [$(n.λ), $(n.ϕ)]""",
 	)
-	for t in n.tags
-		print(io, "\n$t")
-	end
+	print(io, n.tags)
 end
 
 """
@@ -183,12 +180,9 @@ function Base.show(io::IO, w::Way)
 	n = @name w
 	print(
 		io,
-		"""OSM.Way: $(w.ID) $(n |> ismissing ? "" : "\"$n\"")
-		$(length(w.nodes)) nodes"""
+		"""$(w |> typeof): $(w.ID) $(n |> ismissing ? "" : "\"$n\"") ($(length(w.nodes)))"""
 	)
-	for t in w.tags
-		print(io, "\n$t")
-	end
+	print(io, w.tags)
 end
 
 """
@@ -295,8 +289,7 @@ function Base.show(io::IO, r::Relation)
 	n = @name r
 	print(
 		io,
-		"""$(r |> typeof): [$(type(r))] $(r.ID) $(n |> ismissing ? "" : "\"$n\"")
-		$(length(r.members)) members"""
+		"""$(r |> typeof) [$(type(r))]: $(r.ID) $(n |> ismissing ? "" : "\"$n\"") ($(length(r.members)))"""
 	)
 	print(io, r.tags)
 end
