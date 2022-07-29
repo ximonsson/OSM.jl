@@ -5,6 +5,7 @@ include("Overpass.jl")
 
 using LibExpat, EzXML, Printf
 
+include("utils.jl")
 include("elements.jl")
 include("coords.jl")
 include("index.jl")
@@ -130,21 +131,14 @@ waynodes(D::Data, w::Way)::Vector{Node} = [D.nodes[ref] for ref in w.nodes]
 
 Extract all highways from the data.
 """
-highways(D::Data)::Vector{Way} = filternodes(ishighway, D.ways)
-
-"""
-	highways(fn::Function, D::Data)::Vector{Way}
-
-Extract all highways filtered on predicative `fn` from data `D`.
-"""
-highways(fn::Function, D::Data)::Vector{Way} = filternodes(w -> ishighway(w) && fn(w), D.ways)
+highways(D::Data)::Vector{Way} = filternodes(w -> @ishighway(w), D.ways)
 
 """
 	buildings(D::Data)
 
 Extract all the buildings from `D`.
 """
-buildings(D::Data)::Vector{Way} = filternodes(isbuilding, D.ways)
+buildings(D::Data)::Vector{Way} = filternodes(x -> @isbuilding(x), D.ways)
 
 """
 	search(::Data, ::AbstractString)
@@ -152,11 +146,17 @@ buildings(D::Data)::Vector{Way} = filternodes(isbuilding, D.ways)
 Search the data for Nodes and Ways that have the given name.
 """
 function search(D::Data, n::AbstractString)
-	nnames = D.nodes |> values .|> name
-	wnames = D.ways .|> name
+	ws = filternodes(D.ways) do way
+		name = @name way
+		coalesce(name == n, false)
+	end
 
-	return collect(values(D.nodes))[.!ismissing.(nnames) .& (nnames .== n)],
-		D.ways[.!ismissing.(wnames) .& (wnames .== n)]
+	ns = filternodes(D.nodes |> values |> collect) do node
+		name = @name node
+		coalesce(name == n, false)
+	end
+
+	return (ws, ns)
 end
 
 """
@@ -170,18 +170,30 @@ end
 
 Search data `D` based on address.
 """
-function search_address(D::Data, street::AbstractString, n::AbstractString, postcode::AbstractString = "", city::AbstractString = "")
+function search_address(
+		D::Data,
+		street::AbstractString,
+		n::AbstractString,
+		postcode::AbstractString = "",
+		city::AbstractString = "",
+)
 	# ways
 	ws = filternodes(D.ways) do w
-		coalesce(isaddress(w) && (addr_street(w) == street) && (addr_housenumber(w) == n), false)
+		coalesce(
+			@isaddress(w) && (@addr_street(w) == street) && (@addr_housenumber(w) == n),
+			false,
+		)
 	end
 
 	# nodes
 	ns = filternodes(D.nodes |> values |> collect) do node
-		coalesce(isaddress(node) && (addr_street(node) == street) && (addr_housenumber(node) == n), false)
+		coalesce(
+			@isaddress(node) && (@addr_street(node) == street) && (@addr_housenumber(node) == n),
+			false,
+		)
 	end
 
-	(ws, ns)
+	return (ws, ns)
 end
 
 function path(D::Data, e1::Element, e2::Element)

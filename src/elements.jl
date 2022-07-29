@@ -25,33 +25,19 @@ They all contain a `tag` field for checking associated tags.
 abstract type Element end
 
 """
-	hastag(e::Element, t::Symbol)
+	hastag(e::Element, t::String)
 
 Is the element tagged with a certain tag?
 """
 hastag(e::Element, t::String) = haskey(e.tags, t)
 
 """
-	name(::Element)::Union{String,Missing}
+	gettag(e::Element, k::String)::Union{String,Missing}
 
-Return the name of the Way. If there is no name for the way `missing` is returned.
+Get the tag value with key `k` of element `e`. Returns missing if the element does
+not have a tag named `k`.
 """
-name(e::Element)::Union{String,Missing} = get(e.tags, "name", missing)
-
-addr_street(e::Element) = get(e.tags, "addr_street", missing)
-
-addr_housenumber(e::Element) = get(e.tags, "addr_housenumber", missing)
-
-addr_postcode(e::Element) = get(e.tags, "addr_postcode", missing)
-
-addr_city(e::Element) = get(e.tags, "addr_city", missing)
-
-"""
-	isaddress(e::Element)::Bool
-
-Does the node `e` represent an address?
-"""
-isaddress(e::Element)::Bool = hastag(e, :addr_street)
+gettag(e::Element, k::String) = get(e.tags, k, missing)
 
 """
 	tag!(e::Element, t::Tag)
@@ -63,8 +49,7 @@ tag!(e::Element, t::Tag) = setindex!(e.tags, t.second, t.first)
 """
 	tag!(e::Element, k::AbstractString, v::AbstractString)
 """
-tag!(e::Element, k::AbstractString, v::AbstractString) =
-	tag!(e, k => v)
+tag!(e::Element, k::AbstractString, v::AbstractString) = tag!(e, k => v)
 
 """
 OSM Node; for more information about nodes read https://wiki.openstreetmap.org/wiki/Node.
@@ -105,7 +90,7 @@ function Node(attr::Dict{AbstractString,AbstractString})
 end
 
 function Base.show(io::IO, n::Node)
-	nam = n |> name
+	nam = @name n
 	print(
 		io,
 		"""OSM.Node: $(n.ID) $(nam |> ismissing ? "" : "\"$nam\"")
@@ -195,7 +180,7 @@ function Way(attr::Dict{AbstractString,AbstractString})
 end
 
 function Base.show(io::IO, w::Way)
-	n = w |> name
+	n = @name w
 	print(
 		io,
 		"""OSM.Way: $(w.ID) $(n |> ismissing ? "" : "\"$n\"")
@@ -212,20 +197,6 @@ end
 Add node reference `n` to `w`.
 """
 addnode!(w::Way, n::Int64) = push!(w.nodes, n)
-
-"""
-	ishighway(w::Way)
-
-Does the Way element `w` represent a highway (street) of any kind?
-"""
-ishighway(w::Way)::Bool = hastag(w, :highway)
-
-"""
-	isbuilding(w::Way)
-
-Does the Way element `w` represent a building?
-"""
-isbuilding(w::Way)::Bool = hastag(w, :building)
 
 """
 	ways(el::EzXML.Node)
@@ -321,7 +292,7 @@ function Relation(attr::Dict{<:AbstractString,<:AbstractString})
 end
 
 function Base.show(io::IO, r::Relation)
-	n = r |> name
+	n = @name r
 	print(
 		io,
 		"""$(r |> typeof): [$(type(r))] $(r.ID) $(n |> ismissing ? "" : "\"$n\"")
