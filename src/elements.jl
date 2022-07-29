@@ -243,14 +243,19 @@ function is_road(w::Way)::Bool
 	!is_area(w)
 end
 
-struct RelationMember
+"""
+	Member
+
+A member of a `Relation`.
+"""
+struct Member
 	ref::Int64
 	type::String
 	role::String
 end
 
-function RelationMember(attr::Dict{<:AbstractString,<:AbstractString})
-	RelationMember(
+function Member(attr::Dict{<:AbstractString,<:AbstractString})
+	Member(
 		parse(Int64, attr["ref"]),
 		attr["type"],
 		attr["role"],
@@ -258,7 +263,7 @@ function RelationMember(attr::Dict{<:AbstractString,<:AbstractString})
 end
 
 """
-	Relation(el::EzXML.Node)
+	Relation
 
 From OpenstreetMap wiki https://wiki.openstreetmap.org/wiki/Relation
 
@@ -272,7 +277,7 @@ feature plays within a relation.
 """
 struct Relation <: Element
 	ID::Int64
-	members::Vector{RelationMember}
+	members::Vector{Member}
 	tags::Tags
 end
 
@@ -282,7 +287,7 @@ end
 Create a Node from XML node attributes
 """
 function Relation(attr::Dict{<:AbstractString,<:AbstractString})
-	Relation(parse(Int64, attr["id"]), RelationMember[], Tags())
+	Relation(parse(Int64, attr["id"]), Member[], Tags())
 end
 
 function Base.show(io::IO, r::Relation)
@@ -295,7 +300,7 @@ function Base.show(io::IO, r::Relation)
 end
 
 function addmember!(r::Relation, mem::Dict{<:AbstractString,<:AbstractString})
-	push!(r.members, RelationMember(mem))
+	push!(r.members, Member(mem))
 	return r
 end
 
