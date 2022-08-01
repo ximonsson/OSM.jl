@@ -1,3 +1,5 @@
+import Base.==
+
 """
 	Tag <: Pair{Symbol,String}
 
@@ -262,6 +264,10 @@ function Member(attr::Dict{<:AbstractString,<:AbstractString})
 	)
 end
 
+(==)(m::Member, w::Way) = (m.ref == w.ID) && (m.type == "way")
+(==)(m::Member, n::Node) = (m.ref == n.ID) && (m.type == "node")
+(==)(e::Element, m::Member) = m == e  # switcharoo
+
 """
 	Relation
 
@@ -304,4 +310,23 @@ function addmember!(r::Relation, mem::Dict{<:AbstractString,<:AbstractString})
 	return r
 end
 
-type(r::Relation)::Union{String,Missing} = get(r.tags, "type", "unknown type")
+"""
+	type(r::Relation)
+
+Return the type of relation `r`.
+"""
+type(r::Relation)::Union{String,Missing} = gettag(r.tags, "type")
+
+"""
+	ismember(e::Element, r::Relation)
+
+Is the element `e` a member of relation `r`.
+"""
+ismember(e::Element, r::Relation) = e ∈ r.members
+
+"""
+	e ∈ r
+
+Checks if `e` is a member of relation `r`.
+"""
+Base.in(e::Element, r::Relation) = ismember(e, r)
