@@ -26,6 +26,10 @@ They all contain a `tag` field for checking associated tags.
 """
 abstract type Element end
 
+Base.length(e::Element) = 1
+Base.iterate(e::Element) = (e, nothing)
+Base.iterate(e::Element, nothing) = nothing
+
 """
 	hastag(e::Element, t::String)
 
@@ -315,7 +319,7 @@ end
 
 Return the type of relation `r`.
 """
-type(r::Relation)::Union{String,Missing} = gettag(r.tags, "type")
+type(r::Relation)::Union{String,Missing} = gettag(r, "type")
 
 """
 	ismember(e::Element, r::Relation)
