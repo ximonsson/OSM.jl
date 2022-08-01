@@ -104,6 +104,10 @@ function Base.show(io::IO, D::Data)
 	)
 end
 
+Base.length(d::OSM.Data) = 1
+Base.iterate(d::OSM.Data) = (d, nothing)
+Base.iterate(d::OSM.Data, nothing) = nothing
+
 """
 	filternodes(::Function, ::AbstractVector{<:Element})
 
