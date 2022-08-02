@@ -50,7 +50,7 @@ data = OSM.Overpass.map(λmin, λmax, φmin, φmax)
 
 ## Data Object
 
-All data from a file is stored within a `OSM.Data` object that containes fields to the Nodes `nodes`, Ways `ways` and Relations `relations` (not implemented at the moment).
+All data from a file is stored within a `OSM.Data` object that containes fields to the Nodes `nodes`, Ways `ways` and Relations `relations`.
 
 ## Extract Data
 
@@ -95,6 +95,6 @@ streetdata = OSM.extract(data, streets)
 
 ## TODO
 
-* [ ] implement Relation element.
+* [x] implement Relation element.
 * [ ] finish extract functions to include ways in fast way.
-* [ ] more helper functions like extracting buildings.
+* [x] more helper functions like extracting buildings.
