@@ -268,11 +268,6 @@ function Member(attr::Dict{<:AbstractString,<:AbstractString})
 	)
 end
 
-(==)(m::Member, w::Way) = (m.ref == w.ID) && (m.type == "way")
-(==)(m::Member, n::Node) = (m.ref == n.ID) && (m.type == "node")
-(==)(m::Member, r::Relation) = (m.ref == r.ID) && (m.type == "relation")
-(==)(e::Element, m::Member) = m == e  # switcharoo
-
 """
 	Relation
 
@@ -335,3 +330,9 @@ ismember(e::Element, r::Relation) = e ∈ r.members
 Checks if `e` is a member of relation `r`.
 """
 Base.in(e::Element, r::Relation) = ismember(e, r)
+
+# equality functions for members
+(==)(m::Member, w::Way) = (m.ref == w.ID) && (m.type == "way")
+(==)(m::Member, n::Node) = (m.ref == n.ID) && (m.type == "node")
+(==)(m::Member, r::Relation) = (m.ref == r.ID) && (m.type == "relation")
+(==)(e::Element, m::Member) = m == e  # switcharoo
