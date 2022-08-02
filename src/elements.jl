@@ -270,6 +270,7 @@ end
 
 (==)(m::Member, w::Way) = (m.ref == w.ID) && (m.type == "way")
 (==)(m::Member, n::Node) = (m.ref == n.ID) && (m.type == "node")
+(==)(m::Member, r::Relation) = (m.ref == r.ID) && (m.type == "relation")
 (==)(e::Element, m::Member) = m == e  # switcharoo
 
 """
