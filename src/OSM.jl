@@ -57,18 +57,18 @@ Data(io::IOStream) = io |> read |> String |> Data
 Parse an XML file and return an OSM.Data object.
 """
 function parsefile(fp::AbstractString)
-	nodes = sizehint!(Vector{Node}(), 1e6 |> Int)
-	ways = sizehint!(Vector{Way}(), 1e5 |> Int)
+	nodes = sizehint!(Vector{Node}(), 1e7 |> Int)
+	ways = sizehint!(Vector{Way}(), 1e6 |> Int)
 	relations = sizehint!(Vector{Relation}(), 1e5 |> Int)
 
 	el = nothing  # current element
 
 	function create(_, name, attr)
 		if name == "node"
-			el = OSM.Node(attr)
+			el = Node(attr)
 			push!(nodes, el)
 		elseif name == "way"
-			el = OSM.Way(attr)
+			el = Way(attr)
 			push!(ways, el)
 		elseif name == "relation"
 			el = Relation(attr)
@@ -87,6 +87,55 @@ function parsefile(fp::AbstractString)
 	cb = LibExpat.XPCallbacks()
 	cb.start_element = create
 	LibExpat.parsefile(fp, cb)
+
+	Data(nodes, ways, relations)
+end
+
+function parsefile2(fp::AbstractString)
+	nodes = sizehint!(Node[], 1e7 |> Int)
+	ways = sizehint!(Way[], 1e7 |> Int)
+	relations = sizehint!(Relation[], 1e5 |> Int)
+
+	el::Union{Element,Nothing} = nothing
+
+	open(EzXML.StreamReader, fp) do io
+		while (item = iterate(io)) !== nothing
+			if io.name == "node"
+				el = Node(
+					parse(Int64, io["id"]),
+					parse(Float64, io["lon"]),
+					parse(Float64, io["lat"]),
+					Tags(),
+				)
+				push!(nodes, el)
+			elseif io.name == "way"
+				el = Way(
+					parse(Int64, io["id"]),
+					#get(io, "visible", "false") === "true",
+					true,
+					sizehint!(Int64[], 1000),
+					Tags(),
+				)
+				push!(ways, el)
+			elseif io.name == "nd"
+				addnode!(el, parse(Int64, io["ref"]))
+			elseif io.name == "relation"
+				el = Relation(
+					parse(Int64, io["id"]),
+					Member[],
+					Tags(),
+				)
+				push!(relations, el)
+			elseif io.name == "member"
+				addmember!(
+					el,
+					Dict("ref" => io["ref"], "type" => io["type"], "role" => io["role"]),
+				)
+			elseif io.name == "tag"
+				tag!(el, io["k"], io["v"])
+			end
+		end
+	end
 
 	Data(nodes, ways, relations)
 end
