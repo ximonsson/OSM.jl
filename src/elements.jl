@@ -117,7 +117,7 @@ function nodes(el::EzXML.Node)
 	i = Threads.Atomic{Int64}(1)
 
 	@Threads.threads for e in els
-		if e.name != "node"; continue; end
+		e.name != "node" && continue
 		n = Node(e)
 		idx = Threads.atomic_add!(i, 1)
 		N[idx] = n

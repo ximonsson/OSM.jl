@@ -266,4 +266,6 @@ function extract(D::Data, ws::Vector{Way})
 	Data(ns, ws, D.relations)
 end
 
+include("geojson.jl")
+
 end
